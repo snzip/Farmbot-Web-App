@@ -5,7 +5,14 @@ interface BIProps {
   onCommit(e: React.SyntheticEvent<HTMLInputElement>): void;
   min?: number;
   max?: number;
-  type?: "text" | "number" | "email" | "password" | "time" | "date" | "hidden";
+  type?:
+  | "text"
+  | "number"
+  | "email"
+  | "password"
+  | "time"
+  | "date"
+  | "hidden";
   name?: string;
   id?: string;
   /** Allow the user to empty out the form control. If unset, form control
@@ -55,7 +62,6 @@ export class BlurableInput extends React.Component<BIProps, Partial<BIState>> {
       type={this.props.type || "text"}
       disabled={this.props.disabled}
       className={this.props.className}
-      placeholder={this.props.placeholder}
-    />;
+      placeholder={this.props.placeholder} />;
   }
 }

@@ -1,8 +1,20 @@
 import * as React from "react";
 import { Link } from "react-router";
-import { OFSearchProps } from "../interfaces";
 
-export class OpenFarmResults extends React.Component<OFSearchProps, {}> {
+/** A stripped down version of OFSearchResult */
+interface Result {
+  crop: {
+    slug: string;
+    name: string;
+  };
+  image: string;
+}
+
+export interface SearchResultProps {
+  cropSearchResults: Result[];
+}
+
+export class OpenFarmResults extends React.Component<SearchResultProps, {}> {
   render() {
     return <div>
       {this.props.cropSearchResults.map(resp => {
@@ -18,8 +30,7 @@ export class OpenFarmResults extends React.Component<OFSearchProps, {}> {
             <div
               className="plant-catalog-image"
               style={{ background: `url(${image}) top center no-repeat` }}
-              draggable={false}
-            />
+              draggable={false} />
           </div>
         </Link>;
       })}
