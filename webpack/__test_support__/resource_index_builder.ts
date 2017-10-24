@@ -1,9 +1,9 @@
 import { resourceReducer, emptyState } from "../resources/reducer";
-import { TaggedResource } from "../resources/tagged_resources";
+import { TaggedResource, TaggedDevice } from "../resources/tagged_resources";
 import * as _ from "lodash";
-
-export let FAKE_RESOURCES: TaggedResource[] = [
-  {
+import { Actions } from "../constants";
+export function fakeDevice(): TaggedDevice {
+  return {
     "kind": "device",
     "specialStatus": undefined,
     "body": {
@@ -11,7 +11,22 @@ export let FAKE_RESOURCES: TaggedResource[] = [
       "name": "wispy-firefly-846"
     },
     "uuid": "device.415.0"
+  };
+}
+export let FAKE_RESOURCES: TaggedResource[] = [
+  {
+    "kind": "users",
+    "body": {
+      "id": 152,
+      "name": "FarmBot 1",
+      "email": "farmbot1@farmbot.io",
+      "created_at": "2017-09-03T20:01:40.336Z",
+      "updated_at": "2017-09-27T14:00:47.326Z",
+    },
+    "specialStatus": undefined,
+    "uuid": "users.152.44"
   },
+  fakeDevice(),
   {
     "specialStatus": undefined,
     "kind": "farm_events",
@@ -285,15 +300,16 @@ export let FAKE_RESOURCES: TaggedResource[] = [
 ];
 
 export
-  function buildResourceIndex(resources: TaggedResource[] = FAKE_RESOURCES) {
+  function buildResourceIndex(resources: TaggedResource[] = FAKE_RESOURCES,
+  state = emptyState()) {
   const KIND: keyof TaggedResource = "kind"; // Safety first, kids.
   return _(resources)
     .groupBy(KIND)
     .toPairs()
     .map((x: [(TaggedResource["kind"]), TaggedResource[]]) => x)
     .map(y => ({
-      type: "RESOURCE_READY",
+      type: Actions.RESOURCE_READY,
       payload: { name: y[0], data: y[1].map(x => x.body) }
     }))
-    .reduce(resourceReducer, emptyState());
+    .reduce(resourceReducer, state);
 }

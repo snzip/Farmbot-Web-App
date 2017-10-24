@@ -1,12 +1,12 @@
-# Read about factories at https://github.com/thoughtbot/factory_girl
+# Read about factories at https://github.com/thoughtbot/factory_bot
 
-FactoryGirl.define do
+FactoryBot.define do
   factory :user do
     device
     name { Faker::Name.name }
     email { Faker::Internet.email }
     password { Faker::Internet.password(8) }
-    verified_at { Time.now }
+    confirmed_at { Time.now }
     after(:create) do |user|
       user.device ||= Devices::Create.run!(user: resp[:user])
     end

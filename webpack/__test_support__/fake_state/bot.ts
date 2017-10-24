@@ -1,7 +1,6 @@
 import { Everything } from "../../interfaces";
 
 export let bot: Everything["bot"] = {
-  "connectedToMQTT": true,
   "stepSize": 100,
   "controlPanelState": {
     "homing_and_calibration": false,
@@ -44,11 +43,15 @@ export let bot: Everything["bot"] = {
       "farmwares": {}
     }
   },
-  "x_axis_inverted": false,
-  "y_axis_inverted": false,
-  "z_axis_inverted": false,
-  "raw_encoders": false,
-  "scaled_encoders": false,
+  axis_inversion: {
+    "x": false,
+    "y": false,
+    "z": false,
+  },
+  encoder_visibility: {
+    "raw_encoders": false,
+    "scaled_encoders": false,
+  },
   "dirty": false,
   "currentOSVersion": "3.1.6"
 };

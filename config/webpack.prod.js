@@ -10,13 +10,28 @@ var webpack = require("webpack");
 var conf = genConfig();
 
 conf.output = {
-  // must match config.webpack.output_dir
   path: path.join(__dirname, '..', 'public', 'webpack'),
   publicPath: '/webpack/',
-  filename: '[name]-[chunkhash].js'
+  filename: '[name]-[chunkhash].js',
+  chunkFilename: '[id].chunk.js'
 };
 
 [
+  new webpack.optimize.CommonsChunkPlugin({
+    name: "commons",
+    chunks: [
+      "bundle",
+      "front_page",
+      "verification",
+      "password_reset",
+      "tos_update"
+    ],
+    minChunks: ({ resource }) => (
+      resource &&
+      resource.indexOf('node_modules') >= 0 &&
+      resource.match(/\.js$/)
+    ),
+  }),
   new ExtractTextPlugin({
     // Temporary hotfix for some issues on staging.
     // - RC 12 MAY 17

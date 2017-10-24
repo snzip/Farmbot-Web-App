@@ -11,8 +11,11 @@ import {
 } from "../resources/tagged_resources";
 import { PlantPointer } from "../interfaces";
 import { SlotWithTool } from "../resources/interfaces";
-import { BotPosition } from "../devices/interfaces";
+import { BotPosition, StepsPerMmXY, BotLocationData } from "../devices/interfaces";
 import { isNumber } from "lodash";
+import { McuParams } from "farmbot/dist";
+import { AxisNumberProperty, BotSize } from "./map/interfaces";
+import { SelectionBoxData } from "./map/selection_box";
 
 /** TODO: Use Enums */
 export type BotOriginQuadrant = 1 | 2 | 3 | 4;
@@ -30,6 +33,8 @@ export interface State {
   showPoints: boolean;
   showSpread: boolean;
   showFarmbot: boolean;
+  botOriginQuadrant: BotOriginQuadrant;
+  zoomLevel: number;
 }
 
 export interface Props {
@@ -41,7 +46,9 @@ export interface Props {
   plants: TaggedPlantPointer[];
   toolSlots: SlotWithTool[];
   crops: TaggedCrop[];
-  botPosition: BotPosition;
+  botLocationData: BotLocationData;
+  botMcuParams: McuParams;
+  stepsPerMmXY: StepsPerMmXY;
 }
 
 export type TimeUnit =
@@ -69,6 +76,7 @@ export interface MovePlantProps {
   deltaX: number;
   deltaY: number;
   plant: TaggedPlantPointer;
+  gridSize: AxisNumberProperty;
 }
 
 /**
@@ -87,10 +95,8 @@ export interface Crop {
 }
 
 export interface DesignerState {
-  selectedPlant: string | undefined;
+  selectedPlants: string[] | undefined;
   hoveredPlant: HoveredPlantPayl;
-  botOriginQuadrant: BotOriginQuadrant;
-  zoomLevel: number;
   cropSearchQuery: string;
   cropSearchResults: CropLiveSearchResult[];
 }
@@ -159,7 +165,13 @@ export interface GardenMapProps {
   selectedPlant: TaggedPlantPointer | undefined;
   hoveredPlant: TaggedPlantPointer | undefined;
   crops: TaggedCrop[];
-  botPosition: BotPosition;
+  botLocationData: BotLocationData;
+  botSize: BotSize;
+  stopAtHome: Record<"x" | "y", boolean>;
+  zoomLvl: number;
+  botOriginQuadrant: BotOriginQuadrant;
+  gridSize: AxisNumberProperty;
+  gridOffset: AxisNumberProperty;
 }
 
 export interface GardenMapState {
@@ -167,24 +179,9 @@ export interface GardenMapState {
   botOriginQuadrant: BotOriginQuadrant;
   pageX: number | undefined;
   pageY: number | undefined;
-}
-
-export interface GardenPlantProps {
-  quadrant: BotOriginQuadrant;
-  dispatch: Function;
-  plant: Readonly<TaggedPlantPointer>;
-  selected: boolean;
-  dragging: boolean;
-  onClick: (plant: Readonly<TaggedPlantPointer>) => void;
-}
-
-export interface GardenPlantState {
-  icon: string;
-}
-
-export interface GardenPointProps {
-  quadrant: BotOriginQuadrant;
-  point: TaggedGenericPointer;
+  activeDragXY: BotPosition | undefined;
+  activeDragSpread: number | undefined;
+  selectionBox: SelectionBoxData | undefined;
 }
 
 export type PlantOptions = Partial<PlantPointer>;
@@ -193,10 +190,6 @@ export interface EditPlantInfoProps {
   push(url: string): void;
   dispatch: Function;
   findPlant(stringyID: string | undefined): TaggedPlantPointer | undefined;
-}
-
-export interface DNDCropMobileState {
-  isDragging: boolean;
 }
 
 export interface DraggableEvent {

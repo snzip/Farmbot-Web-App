@@ -8,7 +8,7 @@ import { UnsafeError } from "../interfaces";
 
 export function deleteUser(payload: DeletionRequest): Thunk {
   return (dispatch, getState) => {
-    let state = getState().auth;
+    const state = getState().auth;
     if (state) {
       axios({
         method: "delete",
@@ -18,7 +18,7 @@ export function deleteUser(payload: DeletionRequest): Thunk {
       })
         .then((resp: HttpData<{}>) => {
           alert("We're sorry to see you go. :(");
-          Session.clear(true);
+          Session.clear();
         })
         .catch((err: UnsafeError) => {
           toastErrors({ err });

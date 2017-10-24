@@ -1,7 +1,7 @@
 source "https://rubygems.org"
-ruby "2.4.1"
+ruby "2.4.2"
 
-gem "rails",  "~> 5.1.3"
+gem "rails"
 gem "thin"
 gem "rails_12factor"
 gem "devise"
@@ -24,13 +24,14 @@ gem "webpack-rails"
 # Active on the "official" FarmBot server, set the appropriate ENV
 # vars if you wish to use them on your own servers.
 gem "rollbar"
-gem "skylight"
+gem "skylight", "1.4.0"
 
 group :development, :test do
   gem "codecov", require: false
   gem "database_cleaner"
   gem "pry"
-  gem "factory_girl_rails"
+  gem "pry-rails"
+  gem "factory_bot_rails" # 4.8.0
   gem "faker"
   gem "smarf_doc", git: "https://github.com/RickCarlino/smarf_doc.git"
   gem "rails-erd"

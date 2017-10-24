@@ -8,15 +8,13 @@
 
 # Q: Do I need this?
 
-This repository is intended for *software developers* who wish to modify the [Farmbot Web App](http://my.farmbot.io/). **If you are not a developer**, you are highly encouraged to use [the publicly available web app](http://my.farmbot.io/). Running a server is a non-trivial task which will require an intermediate background in Ruby, SQL and Linux system administration.
+This repository is intended for *software developers* who wish to modify the [Farmbot Web App](http://my.farmbot.io/). **If you are not a developer**, you are highly encouraged to use [the publicly available web app](http://my.farmbot.io/). Running a server is *a non-trivial task with security implications*. It requires an intermediate background in Ruby, SQL and Linux system administration.
 
 If you are a developer interested in contributing or would like to provision your own server, you are in the right place.
 
 # Q: What is the Farmbot Web App?
 
-This repo contains FarmBot's web based user interface, as well as a RESTful JSON API. The API stores data such as user account information, plant data, authorization tokens and a variety of other resources.
-
-The key responsibility of the API is *information and permissions management*. This should not be confused with device control, which is done via [MQTT](https://github.com/FarmBot/mqtt-gateway).
+This repo contains FarmBot's web based user interface, a RESTful JSON API and a Dockerized MQTT server. The API stores data such as user account information, plant data, authorization tokens and a variety of other resources. The MQTT server facilitates realtime messaging from the browser to the device.
 
 # Q: Can I see some example API requests?
 
@@ -28,25 +26,28 @@ For a list of example API requests and responses, see our [reference documentati
 
 You will need the following:
 
- 0. A Linux or Mac based machine. We do not support windows at this time.
- 0. [Ruby 2.4.1](http://rvm.io/rvm/install)
+ 1. A Linux or Mac based machine. We do not support windows at this time.
+ 0. [Docker 17.06.0-ce or greater](https://docs.docker.com/engine/installation/)
+ 0. [Ruby 2.4.2](http://rvm.io/rvm/install)
  0. [ImageMagick](https://www.imagemagick.org/script/index.php) (`brew install imagemagick` (Mac) or `sudo apt-get install imagemagick` (Ubuntu))
  0. [Node JS > v6](https://nodejs.org/en/download/)
- 0. [`libpq-dev` and `postgresql`](http://stackoverflow.com/questions/6040583/cant-find-the-libpq-fe-h-header-when-trying-to-install-pg-gem/6040822#6040822)
+ 0. [`libpq-dev` and `postgresql`](http://stackoverflow.com/questions/6040583/cant-find-the-libpq-fe-h-header-when-trying-to-install-pg-gem/6040822#6040822) and `postgresql-contrib`
+ 0. `gem install bundler`
 
 ### Setup
 
- 0. `git clone https://github.com/FarmBot/Farmbot-Web-App`
+ 1. `git clone https://github.com/FarmBot/Farmbot-Web-App --depth=10`
  0. `cd Farmbot-Web-App`
  0. `bundle install`
  0. `yarn install`
- 0. **MOST IMPORTANT STEP**. Copy `config/database.example.yml` to `config/database.yml` via `mv config/database.example.yml config/database.yml`. **Please read the instructions inside the file. Replace the example values provided with real world values.**
+ 0. Database config: Copy `config/database.example.yml` to `config/database.yml` via `cp config/database.example.yml config/database.yml`
+ 0. App config: **MOST IMPORTANT STEP**. Copy `config/application.example.yml` to `config/application.yml` via `mv config/application.example.yml config/application.yml`. **Please read the instructions inside the file. Replace the example values provided with real world values.**
  0. Give permission to create a database*
  0. `rake db:create:all db:migrate db:seed`
  0. (optional) Verify installation with `RAILS_ENV=test rake db:create db:migrate && rspec spec` (API) and `npm run test` (Frontend).
- 0. Start server with `npm run dev`. Make sure you set an `MQTT_HOST` entry in `application.yml` pointing to the IP address or domain of the (soon-to-be-installed) MQTT server. You will need to set that up next.
+ 0. Start server with `rails api:start`. Make sure you set an `MQTT_HOST` entry in `application.yml` pointing to the IP address or domain of  MQTT server. If you are not running the MQTT server on a separate machine, `MQTT_HOST` and `API_HOST` will point to the same server.
+ 0. Start MQTT with `rails mqtt:start`. **Important note:** You may be required to enter a `sudo` password because [docker requires root access](https://docs.docker.com/engine/security/security/#docker-daemon-attack-surface).
  0. Open [localhost:3000](http://localhost:3000).
- 0. Although you can now try things out in your browser, you will still need to [provision an MQTT server](https://github.com/FarmBot/mqtt-gateway) before you can control a FarmBot.
  0. [Raise an issue](https://github.com/FarmBot/Farmbot-Web-App/issues/new?title=Installation%20Failure) if you hit problems with any of these steps. *We can't fix issues we don't know about.*
 
 \*Give permission to `user` to create database:
@@ -133,9 +134,9 @@ $.ajax({
 
 ## Translating the web app into your language
 
-Thanks for your interest in internationalizing the FarmBot web app! To add translations:		
-		
-1. Fork this repo		
+Thanks for your interest in internationalizing the FarmBot web app! To add translations:
+
+1. Fork this repo
 0. Navigate to `/public/app-resources/languages` and run the command `node _helper.js yy` where `yy` is your language's [language code](http://www.science.co.il/Language/Locale-codes.php). Eg: `ru` for Russian.
 0. Edit the translations in the file created in the previous step: `"phrase": "translated phrase"`.
 0. When you have updated or added new translations, commit/push your changes and submit a pull request.

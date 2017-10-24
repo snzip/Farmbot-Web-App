@@ -140,6 +140,16 @@
       background-color: darken($pink, 5%) !important;
     }
   }
+  &.zoom {
+    padding: 8px 12px;
+    &.zoom-out {
+      margin-right: 10px;
+    }
+  }
+  &.no-float {
+    float: none;
+    margin-right: 1rem;
+  }
 }
 
 .block {
@@ -266,4 +276,11 @@
     line-height: 5rem;
     font-size: 2.8rem;
   }
+}
+
+.front-page-button {
+  margin-top: "1rem";
+  padding: ".5rem 1.6rem";
+  font-size: "1.2rem";
+  border-bottom: "none";
 }

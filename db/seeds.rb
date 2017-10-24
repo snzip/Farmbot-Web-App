@@ -5,7 +5,6 @@ unless Rails.env == "production"
     DATE_RANGE_HI           = 3..8
     ENV['MQTT_HOST']        = "blooper.io"
     ENV['OS_UPDATE_SERVER'] = "http://blah.com"
-    ENV['FW_UPDATE_SERVER'] = "http://test.com"
     Point.destroy_all
     Device.destroy_all
     User.destroy_all
@@ -16,7 +15,7 @@ unless Rails.env == "production"
                        agree_to_terms:        true)
     signed_tos = User.last
     signed_tos.agreed_to_terms_at = nil
-    signed_tos.verified_at = Time.now
+    signed_tos.confirmed_at = Time.now
     signed_tos.save(validate: false)
     Users::Create.run!(name:                  "Administrator",
                        email:                 "admin@admin.com",
@@ -24,9 +23,9 @@ unless Rails.env == "production"
                        password_confirmation: "password123",
                        agree_to_terms:        true)
     u = User.last
-    u.update_attributes(verified_at: Time.now)
+    u.update_attributes(confirmed_at: Time.now)
     Log.transaction do
-      FactoryGirl.create_list(:log, 35, device: u.device)
+      FactoryBot.create_list(:log, 35, device: u.device)
     end
     [ "https://via.placeholder.com/350x250?text=Image%20Zero",
       "https://i.imgur.com/XvFBGA4.jpg",
@@ -97,7 +96,9 @@ unless Rails.env == "production"
           executable_id: Sequence.where(device: u.device).order("RANDOM()").first.id,
           executable_type: "Sequence")
     end
-
+    WebcamFeeds::Create.run!(device: u.device,
+                            name: "My Feed 1",
+                            url: "https://nature.nps.gov/air/webcams/parks/yosecam/yose.jpg")
     ts = ToolSlots::Create.run!(device: u.device,
                                 tool_id: t.id,
                                 name: "Slot One.",

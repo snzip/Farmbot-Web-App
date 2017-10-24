@@ -21,33 +21,37 @@ export class NavBar extends React.Component<NavBarProps, Partial<NavBarState>> {
 
   state: NavBarState = {
     mobileMenuOpen: false,
-    tickerListOpen: false
+    tickerListOpen: false,
+    accountMenuOpen: false
   };
 
-  logout = () => Session.clear(true);
+  logout = () => Session.clear();
 
   toggle = (name: keyof NavBarState) => () =>
     this.setState({ [name]: !this.state[name] });
 
-  render() {
-    let hasName = this.props.user && this.props.user.body.name;
+  close = (name: keyof NavBarState) => () =>
+    this.setState({ [name]: false });
 
-    let firstName = hasName && !isMobile() ?
+  render() {
+    const hasName = this.props.user && this.props.user.body.name;
+
+    const firstName = hasName && !isMobile() ?
       `${hasName.split(" ")[0]} ▾` : `${t("Menu")} ▾`;
 
-    let menuIconClassNames: string[] = [
-      "fa", "fa-bars", "visible-xs-inline-block", "mobile-menu-icon"
+    const menuIconClassNames: string[] = [
+      "fa", "fa-bars", "mobile-menu-icon"
     ];
 
     /** The way our app is laid out, we'll pretty much always want this bit. */
-    let pageName = history.getCurrentLocation().pathname.split("/")[2] || "";
+    const pageName = history.getCurrentLocation().pathname.split("/")[2] || "";
 
     /** Change document meta title on every route change. */
     updatePageInfo(pageName);
 
-    let { toggle } = this;
-    let { mobileMenuOpen, tickerListOpen } = this.state;
-    let { logs } = this.props;
+    const { toggle, close } = this;
+    const { mobileMenuOpen, tickerListOpen, accountMenuOpen } = this.state;
+    const { logs } = this.props;
 
     return (
       <div className="nav-wrapper">
@@ -55,26 +59,32 @@ export class NavBar extends React.Component<NavBarProps, Partial<NavBarState>> {
           <Row>
             <Col xs={12}>
               <div>
-                {TickerList({ logs, tickerListOpen, toggle })}
+                <TickerList { ...{ logs, tickerListOpen, toggle } } />
                 <div className="nav-group">
                   <div className="nav-left">
                     <i
                       className={menuIconClassNames.join(" ")}
                       onClick={this.toggle("mobileMenuOpen")} />
                     <span className="mobile-menu-container">
-                      {MobileMenu({ toggle, mobileMenuOpen })}
+                      {MobileMenu({ close, mobileMenuOpen })}
                     </span>
                     <span className="top-menu-container">
-                      {NavLinks({ toggle })}
+                      {NavLinks({ close })}
                     </span>
                   </div>
                   <div className="nav-right">
                     <Popover
                       inline
                       interactionKind={PopoverInteractionKind.HOVER}
-                      target={<div className="nav-name">{firstName}</div>}
+                      target={
+                        <div className="nav-name"
+                          onClick={this.toggle("accountMenuOpen")}>
+                          {firstName}
+                        </div>}
                       position={Position.BOTTOM_RIGHT}
-                      content={AdditionalMenu(this.logout)} />
+                      content={AdditionalMenu({ logout: this.logout, close })}
+                      isOpen={accountMenuOpen}
+                      onClose={this.close("accountMenuOpen")} />
                     <EStopButton
                       bot={this.props.bot}
                       user={this.props.user} />

@@ -1,30 +1,58 @@
 import * as React from "react";
 import { Component } from "react";
 import { TaggedPlantPointer } from "../../../resources/tagged_resources";
-import { BotOriginQuadrant } from "../../interfaces";
-import { round, scale, getXYFromQuadrant } from "../util";
+import { round, getXYFromQuadrant } from "../util";
 import { cachedCrop } from "../../../open_farm/index";
+import { MapTransformProps } from "../interfaces";
+import { SpreadOverlapHelper } from "../spread_overlap_helper";
+import { BotPosition } from "../../../devices/interfaces";
+import { Session } from "../../../session";
+import { BooleanSetting } from "../../../session_keys";
 
-interface SpreadLayerProps {
+export interface SpreadLayerProps {
   visible: boolean;
   plants: TaggedPlantPointer[];
   currentPlant: TaggedPlantPointer | undefined;
-  botOriginQuadrant: BotOriginQuadrant;
+  mapTransformProps: MapTransformProps;
+  dragging: boolean;
+  zoomLvl: number;
+  activeDragXY: BotPosition | undefined;
+  activeDragSpread: number | undefined;
+  editing: boolean;
 }
 
 export function SpreadLayer(props: SpreadLayerProps) {
-  let { plants, visible, currentPlant, botOriginQuadrant } = props;
+  const { plants, visible, mapTransformProps, currentPlant,
+    dragging, zoomLvl, activeDragXY, activeDragSpread, editing } = props;
   return (
-    <g>
-      {
-        plants.map((p, index) => {
-          let isSelected = p === currentPlant;
-          return (visible || isSelected) ?
+    <g id="spread-layer">
+      <defs>
+        <radialGradient id="SpreadGradient">
+          <stop offset="90%" stopColor="rgb(85, 50, 10)" stopOpacity={0.1} />
+          <stop offset="100%" stopColor="rgb(85, 50, 10)" stopOpacity={0} />
+        </radialGradient>
+      </defs>
+
+
+      {plants.map((p, index) => {
+        const selected = !!(currentPlant && (p.uuid === currentPlant.uuid));
+        return <g id={"spread-components-" + p.body.id} key={p.uuid}>
+          {visible &&
             <SpreadCircle
               plant={p}
-              key={index}
-              quadrant={botOriginQuadrant} /> : <g key={index} />;
-        })
+              key={"spread-" + p.uuid}
+              mapTransformProps={mapTransformProps}
+              selected={selected} />}
+          <SpreadOverlapHelper
+            key={"overlap-" + p.uuid}
+            dragging={selected && dragging && editing}
+            plant={p}
+            mapTransformProps={mapTransformProps}
+            zoomLvl={zoomLvl}
+            activeDragXY={activeDragXY}
+            activeDragSpread={activeDragSpread} />
+        </g>;
+      })
       }
     </g>
   );
@@ -32,7 +60,8 @@ export function SpreadLayer(props: SpreadLayerProps) {
 
 interface SpreadCircleProps {
   plant: TaggedPlantPointer;
-  quadrant: BotOriginQuadrant;
+  mapTransformProps: MapTransformProps;
+  selected: boolean;
 }
 
 interface SpreadCircleState {
@@ -50,18 +79,23 @@ export class SpreadCircle extends
   }
 
   render() {
-    let { radius, x, y } = this.props.plant.body;
-    let { quadrant } = this.props;
-    let { qx, qy } = getXYFromQuadrant(round(x), round(y), quadrant);
-    return (
-      <circle
-        cx={qx}
-        cy={qy}
-        r={scale(this.state.spread || radius)}
-        fillOpacity={0.2}
-        fill={"green"}
-        stroke={"green"}
-        strokeWidth={"1.5"} />
-    );
+    const { radius, x, y, id } = this.props.plant.body;
+    const { selected, mapTransformProps } = this.props;
+    const { quadrant, gridSize } = mapTransformProps;
+    const { qx, qy } = getXYFromQuadrant(round(x), round(y), quadrant, gridSize);
+    const animate = !Session.getBool(BooleanSetting.disableAnimations);
+
+    return <g id={"spread-" + id}>
+      {!selected &&
+        <circle
+          className={"spread " + (animate ? "animate" : "")}
+          id={"spread-" + id}
+          cx={qx}
+          cy={qy}
+          // Convert `spread` from diameter in cm to radius in mm.
+          // `radius * 10` is the default value for spread diameter (in mm).
+          r={(this.state.spread || radius) / 2 * 10}
+          fill={"url(#SpreadGradient)"} />}
+    </g>;
   }
 }

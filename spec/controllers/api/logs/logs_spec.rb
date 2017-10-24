@@ -3,8 +3,8 @@ JSON_EXAMPLE = File.read("spec/controllers/api/logs/connor_fixture.json")
 
 describe Api::LogsController do
   include Devise::Test::ControllerHelpers
-  let(:user) { FactoryGirl.create(:user) }
-  let!(:logs) { FactoryGirl.create_list(:log, 5, device: user.device) }
+  let(:user) { FactoryBot.create(:user) }
+  let!(:logs) { FactoryBot.create_list(:log, 5, device: user.device) }
 
   describe '#index' do
     it 'lists last x logs' do
@@ -48,19 +48,21 @@ describe Api::LogsController do
     it 'creates many logs (with an Array)' do
       sign_in user
       before_count = Log.count
-      post :create,
-           body: [
-            { meta: { x: 1, y: 2, z: 3, type: "info" },
-              channels: ["toast"],
-              message: "one" },
-            { meta: { x: 1, y: 2, z: 3, type: "info" },
-              channels: ["toast"],
-              message: "two" },
-            { meta: { x: 1, y: 2, z: 3, type: "info" },
-              channels: ["toast"],
-              message: "three" },
-           ].to_json,
-           params: {format: :json}
+      run_jobs_now do
+        post :create,
+             body: [
+              { meta: { x: 1, y: 2, z: 3, type: "info" },
+                channels: ["toast"],
+                message: "one" },
+              { meta: { x: 1, y: 2, z: 3, type: "info" },
+                channels: ["toast"],
+                message: "two" },
+              { meta: { x: 1, y: 2, z: 3, type: "info" },
+                channels: ["toast"],
+                message: "three" },
+             ].to_json,
+             params: {format: :json}
+      end
       expect(response.status).to eq(200)
       expect(before_count + 3).to eq(Log.count)
     end
@@ -68,39 +70,51 @@ describe Api::LogsController do
     it 'does not bother saving `fun` or `debug` logs' do
       sign_in user
       Log.destroy_all
+      LogDispatch.destroy_all
       before_count = Log.count
       dispatch_before = LogDispatch.count
-      post :create,
-           body: [
-            { meta: { x: 1, y: 2, z: 3, type: "info" },
-              channels: ["toast"],
-              message: "one" },
-            { meta: { x: 1, y: 2, z: 3, type: "fun" }, # Ignored
-              channels: [],
-              message: "two" },
-            { meta: { x: 1, y: 2, z: 3, type: "debug" }, # Ignored
-              channels: [],
-              message: "two" },
-            { meta: { x: 1, y: 2, z: 3, type: "info" },
-              channels: ["email"],
-              message: "three" },
-           ].to_json,
-           params: {format: :json}
-      expect(response.status).to eq(200)
-      expect(before_count + 2).to eq(Log.count)
-      expect(dispatch_before + 1).to eq(LogDispatch.count)
+      run_jobs_now do
+        post :create,
+             body: [
+              { meta: { x: 1, y: 2, z: 3, type: "info" },
+                channels: ["toast"],
+                message: "one" },
+              { meta: { x: 1, y: 2, z: 3, type: "fun" }, # Ignored
+                channels: [],
+                message: "two" },
+              { meta: { x: 1, y: 2, z: 3, type: "debug" }, # Ignored
+                channels: [],
+                message: "two" },
+              { meta: { x: 1, y: 2, z: 3, type: "info" },
+                channels: ["email"],
+                message: "three" },
+             ].to_json,
+             params: {format: :json}
+        expect(response.status).to   eq(200)
+        expect(Log.count).to         eq(before_count + 2)
+        expect(LogDispatch.count).to eq(dispatch_before + 1)
+      end
     end
 
     it 'Runs compaction when the logs pile up' do
-      stub = {
-        meta: { x: 1, y: 2, z: 3, type: "info" }, channels: ["toast"],
-              message: "one" }
       payl = []
-      100.times { payl.push(stub) }
+      100.times do
+        payl.push({ meta: { x: 1,
+                            y: 2,
+                            z: 3,
+                            type: "info"
+                          },
+                    channels: ["toast"],
+                    message: "one" })
+      end
       sign_in user
       user.device.update_attributes!(max_log_count: 15)
+      LogDispatch.destroy_all
+      Log.destroy_all
       before_count = Log.count
-      post :create, body: payl.to_json, params: {format: :json}
+      run_jobs_now do
+        post :create, body: payl.to_json, params: {format: :json}
+      end
       expect(response.status).to eq(200)
       expect(json.length).to eq(user.device.max_log_count)
     end
@@ -121,14 +135,16 @@ describe Api::LogsController do
       body         = { meta: { x: 1, y: 2, z: 3, type: "info" },
                        channels: ["email"],
                        message: "Heyoooo" }.to_json
-      post :create, body: body, params: {format: :json}
-      after_count = LogDispatch.count
-      expect(response.status).to eq(200)
-      expect(last_email).to be
-      expect(last_email.body.to_s).to include("Heyoooo")
-      expect(last_email.to).to include(user.email)
-      expect(before_count).to be < after_count
-      expect(LogDispatch.where(sent_at: nil).count).to eq(0)
+      run_jobs_now do
+        post :create, body: body, params: {format: :json}
+        after_count = LogDispatch.count
+        expect(response.status).to eq(200)
+        expect(last_email).to be
+        expect(last_email.body.to_s).to include("Heyoooo")
+        expect(last_email.to).to include(user.email)
+        expect(before_count).to be < after_count
+        expect(LogDispatch.where(sent_at: nil).count).to eq(0)
+      end
     end
 
     it "handles bug that Connor reported" do
@@ -136,10 +152,12 @@ describe Api::LogsController do
       empty_mail_bag
       Log.destroy_all
       LogDispatch.destroy_all
-      post :create,
-           body: JSON_EXAMPLE,
-           params: {format: :json}
-      expect(last_email).to eq(nil)
+      run_jobs_now do
+        post :create,
+             body: JSON_EXAMPLE,
+             params: {format: :json}
+        expect(last_email).to eq(nil)
+      end
     end
   end
 end

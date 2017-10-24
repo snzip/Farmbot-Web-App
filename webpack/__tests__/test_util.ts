@@ -6,11 +6,15 @@ import {
   safeStringFetch,
   oneOf,
   semverCompare,
-  SemverResult
+  SemverResult,
+  trim,
+  bitArray,
+  withTimeout,
+  minFwVersionCheck
 } from "../util";
 describe("util", () => {
   describe("safeStringFetch", () => {
-    let data = {
+    const data = {
       // tslint:disable-next-line:no-null-keyword
       "null": null,
       "undefined": undefined,
@@ -47,8 +51,8 @@ describe("util", () => {
 
   describe("betterCompact", () => {
     it("removes falsy values", () => {
-      let before = [{}, {}, undefined];
-      let after = betterCompact(before);
+      const before = [{}, {}, undefined];
+      const after = betterCompact(before);
       expect(after.length).toBe(2);
       expect(after).not.toContain(undefined);
     });
@@ -56,8 +60,8 @@ describe("util", () => {
 
   describe("defensiveClone", () => {
     it("deep clones any serializable object", () => {
-      let origin = { a: "b", c: 2, d: [{ e: { f: "g" } }] };
-      let child = defensiveClone(origin);
+      const origin = { a: "b", c: 2, d: [{ e: { f: "g" } }] };
+      const child = defensiveClone(origin);
       origin.a = "--";
       origin.c = 0;
       origin.d[0].e.f = "--";
@@ -82,7 +86,7 @@ describe("util", () => {
 
   describe("prettyPrintApiErrors", () => {
     it("handles properly formatted API error messages", () => {
-      let result = prettyPrintApiErrors({
+      const result = prettyPrintApiErrors({
         response: {
           data: {
             email: "can't be blank"
@@ -133,5 +137,54 @@ describe("util", () => {
       expect(semverCompare("2.0.2", "1.1.9"))
         .toBe(SemverResult.LEFT_IS_GREATER);
     });
+  });
+});
+
+describe("trim()", () => {
+  it("formats whitespace", () => {
+    const string = `foo
+      bar`;
+    const formattedString = trim(string);
+    expect(formattedString).toEqual("foo bar");
+  });
+});
+
+describe("bitArray", () => {
+  it("converts flags to numbers", () => {
+    expect(bitArray(true)).toBe(0b1);
+    expect(bitArray(true, false)).toBe(0b10);
+    expect(bitArray(false, true)).toBe(0b01);
+    expect(bitArray(true, true)).toBe(0b11);
+  });
+});
+
+describe("withTimeout()", () => {
+  it("rejects promises that do not meet a particular deadline", (done) => {
+    const p = new Promise(res => setTimeout(() => res("Done"), 10));
+    withTimeout(1, p).then(fail, (y) => {
+      expect(y).toContain("Timed out");
+      done();
+    });
+  });
+
+  it("resolves promises that meet a particular deadline", (done) => {
+    withTimeout(10, new Promise(res => setTimeout(() => res("Done"), 1)))
+      .then(y => {
+        expect(y).toContain("Done");
+        done();
+      }, fail);
+  });
+});
+
+describe("minFwVersionCheck()", () => {
+  it("firmware version meets or exceeds minimum", () => {
+    expect(minFwVersionCheck("1.0.1R", "1.0.1")).toBeTruthy();
+    expect(minFwVersionCheck("1.0.2F", "1.0.1")).toBeTruthy();
+  });
+
+  it("firmware version doesn't meet minimum", () => {
+    expect(minFwVersionCheck("1.0.0R", "1.0.1")).toBeFalsy();
+    expect(minFwVersionCheck(undefined, "1.0.1")).toBeFalsy();
+    expect(minFwVersionCheck("1.0.0", "1.0.1")).toBeFalsy();
   });
 });

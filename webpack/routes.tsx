@@ -3,24 +3,25 @@ import * as React from "react";
 import { Provider } from "react-redux";
 import * as _ from "lodash";
 import { Router, RedirectFunction, RouterState } from "react-router";
-import App from "./app";
+import { App } from "./app";
 import { store as _store } from "./redux/store";
 import { history } from "./history";
 import { Store } from "./redux/interfaces";
 import { ready } from "./config/actions";
 import { Session } from "./session";
-import { isMobile } from "./util";
+import { isMobile, attachToRoot } from "./util";
+import { Callback } from "i18next";
 
 interface RootComponentProps {
   store: Store;
 }
 
-let errorLoading = (cb: Function) => function handleError(err: object) {
+const errorLoading = (cb: Function) => function handleError(err: object) {
   console.error("Dynamic page loading failed", err);
-  let container = document.getElementById("root");
-  let stack = _.get(err, "stack", "No stack.");
+  const container = document.getElementById("root");
+  const stack = _.get(err, "stack", "No stack.");
   if (container) {
-    let message = _.get(err, "message", "No message available.");
+    const message = _.get(err, "message", "No message available.");
     _.get(window, "Rollbar.error", (_x: string) => { })(message);
     container.innerHTML = (`
     <div>
@@ -52,32 +53,38 @@ let errorLoading = (cb: Function) => function handleError(err: object) {
     // Clear cache for end users, but not developers.
     localStorage.clear();
   }
-  let y = document.querySelectorAll("link");
+  const y = document.querySelectorAll("link");
   for (let x = 0; x < y.length; x++) {
-    let element = y[x];
+    const element = y[x];
     element.remove();
   }
 };
-let controlsRoute = {
+const controlsRoute = {
   path: "app/controls",
   getComponent(_discard: void, cb: Function) {
-    import("./controls/controls").then(
-      (module) => cb(undefined, module.Controls)
-    ).catch(errorLoading(cb));
+    import("./controls/controls")
+      .then((module) => cb(undefined, module.Controls))
+      .catch(errorLoading(cb));
   }
 };
+
+export const attachAppToDom: Callback = (err, t) => {
+  attachToRoot(RootComponent, { store: _store });
+  _store.dispatch(ready());
+};
+
 export class RootComponent extends React.Component<RootComponentProps, {}> {
 
   requireAuth(_discard: RouterState, replace: RedirectFunction) {
-    let { store } = this.props;
-    if (Session.get()) { // has a previous session in cache
+    const { store } = this.props;
+    if (Session.fetchStoredToken()) { // has a previous session in cache
       if (store.getState().auth) { // Has session, logged in.
         return;
       } else { // Has session but not logged in (returning visitor).
         store.dispatch(ready());
       }
     } else { // Not logged in yet.
-      Session.clear(true);
+      Session.clear();
     }
   }
 
@@ -90,13 +97,6 @@ export class RootComponent extends React.Component<RootComponentProps, {}> {
       replace(`${next.location.pathname}/plants`);
     }
   }
-
-  // replaceSequencesModules(next: RouterState, replace: RedirectFunction) {
-  //   if (next.location.pathname === "/app/sequences" && isMobile()) {
-  //     replace(`${next.location.pathname}/`);
-  //   }
-  // };
-
   /*
     /app                => App
     /app/account        => Account
@@ -174,8 +174,16 @@ export class RootComponent extends React.Component<RootComponentProps, {}> {
           {
             path: "plants/crop_search/:crop/add",
             getComponent(_discard: void, cb: Function) {
-              import("./farm_designer/plants/dnd_crop_mobile")
-                .then(module => cb(undefined, module.DNDCropMobile))
+              import("./farm_designer/plants/add_plant")
+                .then(module => cb(undefined, module.AddPlant))
+                .catch(errorLoading(cb));
+            },
+          },
+          {
+            path: "plants/select",
+            getComponent(_discard: void, cb: Function) {
+              import("./farm_designer/plants/select_plants")
+                .then(module => cb(undefined, module.SelectPlants))
                 .catch(errorLoading(cb));
             },
           },
@@ -281,10 +289,10 @@ export class RootComponent extends React.Component<RootComponentProps, {}> {
   render() {
     // ==== TEMPORARY HACK. TODO: Add a before hook, if such a thing exists in
     // React Router. Or switch routing libs.
-    let notLoggedIn = !Session.get();
-    let restrictedArea = window.location.pathname.includes("/app/");
+    const notLoggedIn = !Session.fetchStoredToken();
+    const restrictedArea = window.location.pathname.includes("/app");
     if (notLoggedIn && restrictedArea) {
-      window.location.href = "/";
+      Session.clear();
     }
     // ==== END HACK ====
     return <Provider store={_store}>

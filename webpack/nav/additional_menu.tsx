@@ -1,22 +1,22 @@
 import * as React from "react";
 import { Link } from "react-router";
 import { t } from "i18next";
+import { AccountMenuProps } from "./interfaces";
 
-export const AdditionalMenu = (logout: () => void) => {
+export const AdditionalMenu = (props: AccountMenuProps) => {
   return <div className="nav-additional-menu">
-    <Link to="/app/account">
+    <Link to="/app/account" onClick={props.close("accountMenuOpen")}>
       <i className="fa fa-cog"></i>
       {t("Account Settings")}
     </Link>
     <div>
-      <a
-        href="https://software.farmbot.io/docs/the-farmbot-web-app"
+      <a href="https://software.farmbot.io/docs/the-farmbot-web-app"
         target="_blank">
         <i className="fa fa-file-text-o"></i>{t("Documentation")}
       </a>
     </div>
     <div>
-      <a onClick={logout}>
+      <a onClick={props.logout}>
         <i className="fa fa-sign-out"></i>
         {t("Logout")}
       </a>

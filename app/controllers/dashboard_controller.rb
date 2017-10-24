@@ -6,8 +6,22 @@ class DashboardController < ApplicationController
                             TOS_URL:        ENV.fetch("TOS_URL", ""),
                             LONG_REVISION: LONG_REVISION,
                             SHORT_REVISION: LONG_REVISION.first(8) }.to_json
-  [:main_app, :front_page, :tos_update, :verify, :password_reset].map do |actn|
-    define_method(actn) { render actn, layout: false }
+  def tos_update
+    # I want to keep an eye on this one in prod.
+    # If `tos_update` is firing without us knowing about it, it could cause a
+    # service outage.
+    Rollbar.info("TOS UPDATE????")
+    render :tos_update, layout: false
+  end
+
+  [:main_app, :front_page, :verify, :password_reset].map do |actn|
+    define_method(actn) do
+      begin
+        render actn, layout: false
+      rescue ActionView::MissingTemplate => q
+        raise ActionController::RoutingError, "Bad URL in dashboard"
+      end
+    end
   end
 
   # Hit by Certbot / Let's Encrypt when it's time to verify control of domain.

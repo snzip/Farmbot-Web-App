@@ -3,29 +3,38 @@ import {
   selectAllGenericPointers,
   selectAllPlantPointers,
   selectAllCrops,
-  joinToolsAndSlot,
-  findPlant
+  joinToolsAndSlot
 } from "../resources/selectors";
-import { BotPosition } from "../devices/interfaces";
+import { BotLocationData, StepsPerMmXY } from "../devices/interfaces";
+import { isNumber } from "lodash";
 
 export function mapStateToProps(props: Everything) {
 
-  let plants = selectAllPlantPointers(props.resources.index);
-  let selectedPlant = plants
-    .filter(x => x.uuid === props
-      .resources
-      .consumers
-      .farm_designer
-      .selectedPlant)[0];
-  let { plantUUID } = props.resources.consumers.farm_designer.hoveredPlant;
-  let hoveredPlant = plantUUID ?
-    findPlant(props.resources.index, plantUUID) : undefined;
+  const plants = selectAllPlantPointers(props.resources.index);
+  const maybeSelectedPlants = props.resources.consumers.farm_designer.selectedPlants;
+  const selectedPlant = maybeSelectedPlants
+    ? plants.filter(x => x.uuid === maybeSelectedPlants[0])[0]
+    : undefined;
+  const { plantUUID } = props.resources.consumers.farm_designer.hoveredPlant;
+  const hoveredPlant = plants.filter(x => x.uuid === plantUUID)[0];
 
-  let botPosition: BotPosition;
-  if (props.bot.hardware.location_data) {
-    botPosition = props.bot.hardware.location_data.position;
-  } else {
-    botPosition = { x: undefined, y: undefined, z: undefined };
+  const getBotLocationData = (): BotLocationData => {
+    if (props.bot.hardware.location_data) {
+      return props.bot.hardware.location_data;
+    }
+    return {
+      position: { x: undefined, y: undefined, z: undefined },
+      scaled_encoders: { x: undefined, y: undefined, z: undefined },
+      raw_encoders: { x: undefined, y: undefined, z: undefined },
+    };
+  };
+
+  function stepsPerMmXY(): StepsPerMmXY {
+    const config = props.bot.hardware.configuration;
+    if (isNumber(config.steps_per_mm_x) && isNumber(config.steps_per_mm_y)) {
+      return { x: config.steps_per_mm_x, y: config.steps_per_mm_y };
+    }
+    return { x: undefined, y: undefined };
   }
 
   return {
@@ -38,6 +47,8 @@ export function mapStateToProps(props: Everything) {
     toolSlots: joinToolsAndSlot(props.resources.index),
     hoveredPlant,
     plants,
-    botPosition
+    botLocationData: getBotLocationData(),
+    botMcuParams: props.bot.hardware.mcu_params,
+    stepsPerMmXY: stepsPerMmXY()
   };
 }

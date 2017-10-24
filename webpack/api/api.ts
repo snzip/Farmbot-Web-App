@@ -48,7 +48,7 @@ export class API {
 
   static parseURL(url: string): UrlInfo {
     // Such an amazing hack!
-    let info = document.createElement("a");
+    const info = document.createElement("a");
     info.href = url;
     return info;
   }
@@ -86,7 +86,7 @@ export class API {
   private readonly host: string;
 
   constructor(input: string) {
-    let url = API.parseURL(input);
+    const url = API.parseURL(input);
     this.protocol = url.protocol as ProtocolString;
     this.hostname = url.hostname;
     this.port = url.port;
@@ -106,6 +106,10 @@ export class API {
   get devicePath() { return `${this.baseUrl}/api/device/`; }
   /** /api/users/ */
   get usersPath() { return `${this.baseUrl}/api/users/`; }
+  /** /api/users/resend_verification */
+  get userResendConfirmationPath() {
+    return this.usersPath + "/resend_verification";
+  }
   /** /api/peripherals/ */
   get peripheralsPath() { return `${this.baseUrl}/api/peripherals/`; }
   /** /api/farm_events/ */
@@ -125,5 +129,7 @@ export class API {
   /** /api/logs */
   get logsPath() { return `${this.baseUrl}/api/logs/`; }
   /** /api/webcam_feed */
-  get webcamFeedPath() { return `${this.baseUrl}/api/webcam_feed/`; }
+  get webcamFeedPath() { return `${this.baseUrl}/api/webcam_feeds/`; }
+  /** /api/users/verify/:token */
+  verificationPath = (token: string) => ("/api/users/verify/" + token);
 }

@@ -17,7 +17,7 @@ interface State {
 }
 
 function mapStateToProps(props: Everything): Props {
-  let plants = selectAllPlantPointers(props.resources.index);
+  const plants = selectAllPlantPointers(props.resources.index);
   return {
     plants,
     dispatch: props.dispatch
@@ -54,17 +54,20 @@ export class Plants extends React.Component<Props, State> {
         <div className="thin-search-wrapper">
           <div className="text-input-wrapper">
             <i className="fa fa-search"></i>
-            <input type="text" onChange={this.update} />
+            <input type="text" onChange={this.update}
+              placeholder={t("Search your plants...")} />
           </div>
-          {
-            this.props.plants
-              .filter(p => p.body.name.toLowerCase()
-                .includes(this.state.searchTerm.toLowerCase()))
-              .map(p => <PlantInventoryItem
-                key={p.uuid}
-                tpp={p}
-                dispatch={this.props.dispatch} />)
-          }
+          <div className="plant-panel-content">
+            {
+              this.props.plants
+                .filter(p => p.body.name.toLowerCase()
+                  .includes(this.state.searchTerm.toLowerCase()))
+                .map(p => <PlantInventoryItem
+                  key={p.uuid}
+                  tpp={p}
+                  dispatch={this.props.dispatch} />)
+            }
+          </div>
         </div>
 
       </div>

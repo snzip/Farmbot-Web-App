@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema.define(version: 20170818163411) do
+ActiveRecord::Schema.define(version: 20171017200333) do
 
   # These are extensions that must be enabled in order to support this database
   enable_extension "plpgsql"
@@ -37,7 +37,8 @@ ActiveRecord::Schema.define(version: 20170818163411) do
     t.integer "max_log_count", default: 100
     t.integer "max_images_count", default: 100
     t.string "timezone", limit: 280
-    t.datetime "last_seen"
+    t.datetime "last_saw_api"
+    t.datetime "last_saw_mq"
     t.index ["timezone"], name: "index_devices_on_timezone"
   end
 
@@ -195,10 +196,13 @@ ActiveRecord::Schema.define(version: 20170818163411) do
     t.string "last_sign_in_ip"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
-    t.datetime "verified_at"
-    t.string "verification_token"
+    t.datetime "confirmed_at"
+    t.string "confirmation_token"
     t.datetime "agreed_to_terms_at"
+    t.datetime "confirmation_sent_at"
+    t.string "unconfirmed_email"
     t.index ["agreed_to_terms_at"], name: "index_users_on_agreed_to_terms_at"
+    t.index ["confirmation_token"], name: "index_users_on_confirmation_token", unique: true
     t.index ["device_id"], name: "index_users_on_device_id"
     t.index ["email"], name: "index_users_on_email", unique: true
   end
@@ -208,6 +212,7 @@ ActiveRecord::Schema.define(version: 20170818163411) do
     t.string "url"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.string "name", limit: 80, default: "Webcam Feed"
     t.index ["device_id"], name: "index_webcam_feeds_on_device_id"
   end
 

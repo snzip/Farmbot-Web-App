@@ -3,6 +3,8 @@ import * as _ from "lodash";
 import { t } from "i18next";
 import { Link } from "react-router";
 import { FormattedPlantInfo } from "./map_state_to_props";
+import { round } from "../map/util";
+import { history } from "../../history";
 
 interface PlantPanelProps {
   info: FormattedPlantInfo;
@@ -10,8 +12,10 @@ interface PlantPanelProps {
 }
 
 export function PlantPanel({ info, onDestroy }: PlantPanelProps) {
-  let { name, slug, plantedAt, daysOld, x, y, uuid } = info;
-  let destroy = () => onDestroy && onDestroy(uuid);
+  const { name, slug, plantedAt, daysOld, uuid } = info;
+  let { x, y } = info;
+  if (onDestroy) { x = round(x); y = round(y); }
+  const destroy = () => onDestroy && onDestroy(uuid);
   return <div className="panel-content">
     <label>
       {t("Plant Info")}
@@ -58,7 +62,7 @@ export function PlantPanel({ info, onDestroy }: PlantPanelProps) {
         </b>
         <span>
           ({x}, {y})
-          </span>
+        </span>
       </li>
     </ul>
     <div>
@@ -71,6 +75,13 @@ export function PlantPanel({ info, onDestroy }: PlantPanelProps) {
       hidden={!onDestroy}
       onClick={destroy} >
       {t("Delete")}
+    </button>
+    <button
+      className="fb-button gray"
+      style={{ marginRight: "10px" }}
+      hidden={!onDestroy}
+      onClick={() => history.push("/app/designer/plants/select")} >
+      {t("Delete multiple")}
     </button>
   </div>;
 }

@@ -4,11 +4,12 @@ import { DangerZoneProps } from "../interfaces";
 import { Row, Col } from "../../../ui/index";
 import { Header } from "./header";
 import { Collapse } from "@blueprintjs/core";
+import { Content } from "../../../constants";
 
 export function DangerZone(props: DangerZoneProps) {
 
-  let { dispatch, bot, onReset } = props;
-  let { danger_zone } = bot.controlPanelState;
+  const { dispatch, bot, onReset } = props;
+  const { danger_zone } = bot.controlPanelState;
 
   return <section>
     <Header
@@ -25,8 +26,7 @@ export function DangerZone(props: DangerZoneProps) {
         </Col>
         <Col xs={6}>
           <p>
-            {t(`Restoring hardware parameter defaults will destroy the
-                current settings, resetting them to default values.`)}
+            {t(Content.RESTORE_DEFAULT_HARDWARE_SETTINGS)}
             <br />
             <b>
               {t("Will reboot device.")}

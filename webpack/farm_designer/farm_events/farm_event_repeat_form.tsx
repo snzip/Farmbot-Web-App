@@ -13,7 +13,7 @@ type Key = keyof FarmEventViewModel;
 export interface RepeatFormProps {
   /** Should the form controls be grayed out? */
   disabled: boolean;
-  /** Should the form be show _at all_? */
+  /** Should the form be shown _at all_? */
   hidden: boolean;
   onChange(key: Key, value: string): void;
   timeUnit: TimeUnit;
@@ -22,12 +22,12 @@ export interface RepeatFormProps {
   endTime: string;
 }
 
-let indexKey: keyof DropDownItem = "value";
+const indexKey: keyof DropDownItem = "value";
 const OPTN_LOOKUP = keyBy(repeatOptions, indexKey);
 
 export function FarmEventRepeatForm(props: RepeatFormProps) {
-  let { disabled, onChange, repeat, endDate, endTime, timeUnit } = props;
-  let changeHandler =
+  const { disabled, onChange, repeat, endDate, endTime, timeUnit } = props;
+  const changeHandler =
     (key: Key) => (e: Ev) => onChange(key, e.currentTarget.value);
   if (props.hidden) {
     return <div />;

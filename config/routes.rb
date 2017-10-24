@@ -13,16 +13,23 @@ FarmBot::Application.routes.draw do
         post :search, on: :collection
     end
     resource :public_key,     only: [:show]
-    resource :tokens,         only: [:create]
-    resource :users,          only: [:create, :update, :destroy, :show]
+    resource :tokens,         only: [:create, :show]
+    resource :users,          only: [:create, :update, :destroy, :show] do
+      post :resend_verification, on: :member
+    end
     resource :device,         only: [:show, :destroy, :create, :update]
-    resource :webcam_feed,    only: [:show, :update]
+    resources :webcam_feeds,  only: [:create,
+                                     :show,
+                                     :index,
+                                     :update,
+                                     :destroy]
     resources :password_resets, only: [:create, :update]
     put "/password_resets"     => "password_resets#update", as: :whatever
     put "/users/verify/:token" => "users#verify",           as: :users_verify
   # Make life easier on API users by not adding special rules for singular
   # resources. Otherwise methods like `save()` on the frontend would need to
   # keep track of an `isSingular` property, which I would prefer to not do.
+  get   "/device/:id" => "devices#show",   as: :get_device_redirect
   put   "/device/:id" => "devices#update", as: :put_device_redirect
   patch "/device/:id" => "devices#update", as: :patch_device_redirect
   put   "/users/:id"  => "users#update",   as: :put_users_redirect
@@ -44,9 +51,13 @@ FarmBot::Application.routes.draw do
   # =======================================================================
   # NON-API (USER FACING) URLS:
   # =======================================================================
-  get "/" => 'dashboard#front_page', as: :front_page
-  get "/app" => 'dashboard#main_app', as: :dashboard
-  match "/app/*path", to: 'dashboard#main_app', via: :all
+  get "/"           => 'dashboard#front_page', as: :front_page
+  get "/app"        => 'dashboard#main_app',   as: :dashboard
+  get "/tos_update" => 'dashboard#tos_update', as: :tos_update
+  match "/app/*path",
+          to: 'dashboard#main_app',
+          via: :all,
+          constraints: { format: 'html' }
   get "/password_reset/*token" => 'dashboard#password_reset',
     as: :password_reset
   get "/verify" => 'dashboard#verify', as: :verify

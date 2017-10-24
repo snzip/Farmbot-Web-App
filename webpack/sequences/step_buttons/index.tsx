@@ -1,4 +1,5 @@
 import * as React from "react";
+import { t } from "i18next";
 import { SequenceBodyItem as Step } from "farmbot";
 import { error } from "farmbot-toastr";
 import { StepDragger, NULL_DRAGGER_ID } from "../../draggable/step_dragger";
@@ -7,12 +8,12 @@ import { StepButtonParams } from "../interfaces";
 import { Col } from "../../ui/index";
 import { TaggedSequence } from "../../resources/tagged_resources";
 
-let stepClick = (dispatch: Function, step: Step, seq: TaggedSequence | undefined) =>
+const stepClick = (dispatch: Function, step: Step, seq: TaggedSequence | undefined) =>
   (event: React.FormEvent<HTMLButtonElement>) => {
     if (seq) {
       pushStep(step, dispatch, seq);
     } else {
-      error("Select a sequence first");
+      error(t("Select a sequence first"));
     }
   };
 

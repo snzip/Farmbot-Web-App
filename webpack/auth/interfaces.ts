@@ -8,24 +8,12 @@ export interface AuthState {
 }
 
 export interface UnencodedToken {
-  // /** SUBJECT - The user's email. STOP USING THIS! */
-  // sub: string;
-  /** ISSUED AT */
-  iat: number;
-  /** JSON TOKEN IDENTIFIER - a serial number for the token. */
-  jti: string;
   /** ISSUER - Where token came from (API URL). */
   iss: string;
-  /** EXPIRATION DATE */
-  exp: number;
   /** MQTT server address */
-  mqtt: string;
-  /** BOT UNIQUE IDENTIFIER */
-  bot: string;
+  // mqtt: string;
   /** Where to download RPi software */
   os_update_server: string;
-  /** Where to download firmware. */
-  fw_update_server: string;
 }
 
 export interface User {

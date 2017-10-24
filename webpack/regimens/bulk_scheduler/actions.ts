@@ -11,25 +11,29 @@ import { Actions } from "../../constants";
 
 export function pushWeek() {
   return {
-    type: "PUSH_WEEK"
+    type: Actions.PUSH_WEEK,
+    payload: undefined
   };
 }
 
 export function popWeek() {
   return {
-    type: "POP_WEEK"
+    type: Actions.POP_WEEK,
+    payload: undefined
   };
 }
 
 export function deselectDays() {
   return {
-    type: "DESELECT_ALL_DAYS"
+    type: Actions.DESELECT_ALL_DAYS,
+    payload: undefined
   };
 }
 
 export function selectDays() {
   return {
-    type: "SELECT_ALL_DAYS"
+    type: Actions.SELECT_ALL_DAYS,
+    payload: undefined
   };
 }
 
@@ -39,13 +43,13 @@ export function setTimeOffset(ms: number) {
     warning("Time is not properly formatted.", "Bad Input");
     throw new Error("Bad time input on regimen page: " + JSON.stringify(ms));
   } else {
-    return { type: "SET_TIME_OFFSET", payload: ms };
+    return { type: Actions.SET_TIME_OFFSET, payload: ms };
   }
 }
 
 export function toggleDay({ week, day }: ToggleDayParams) {
   return {
-    type: "TOGGLE_DAY",
+    type: Actions.TOGGLE_DAY,
     payload: {
       week,
       day
@@ -60,20 +64,22 @@ export function setSequence(uuid: string): ReduxAction<string> {
 
 export function commitBulkEditor(): Thunk {
   return function (dispatch, getState) {
-    let res = getState().resources;
-    let { weeks, dailyOffsetMs, selectedSequenceUUID, currentRegimen } =
+    const res = getState().resources;
+    const { weeks, dailyOffsetMs, selectedSequenceUUID, currentRegimen } =
       res.consumers.regimens;
 
     // If the user hasn't clicked a regimen, initialize one for them.
     if (currentRegimen) {
       // Proceed only if they selected a sequence from the drop down.
       if (selectedSequenceUUID) {
-        let seq = findSequence(res.index, selectedSequenceUUID).body;
-        const regimenItems = groupRegimenItemsByWeek(weeks, dailyOffsetMs, seq);
+        const seq = findSequence(res.index, selectedSequenceUUID).body;
+        const regimenItems = weeks.length > 0
+          ? groupRegimenItemsByWeek(weeks, dailyOffsetMs, seq)
+          : undefined;
         // Proceed only if days are selcted in the scheduler.
-        if (regimenItems.length > 0) {
-          let reg = findRegimen(res.index, currentRegimen);
-          let update = defensiveClone(reg).body;
+        if (regimenItems && regimenItems.length > 0) {
+          const reg = findRegimen(res.index, currentRegimen);
+          const update = defensiveClone(reg).body;
           update.regimen_items = update.regimen_items.concat(regimenItems);
           dispatch(overwrite(reg, update));
         } else {

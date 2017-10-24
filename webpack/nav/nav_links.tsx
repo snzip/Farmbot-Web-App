@@ -1,10 +1,7 @@
 import * as React from "react";
 import { Link } from "react-router";
-import * as _ from "lodash";
-
 import { history } from "../history";
 import { NavLinksProps } from "./interfaces";
-import { isMobile } from "../util";
 
 export const links = [
   { name: "Farm Designer", icon: "leaf", slug: "designer" },
@@ -17,19 +14,18 @@ export const links = [
 ];
 
 export const NavLinks = (props: NavLinksProps) => {
-  let currPath = history.getCurrentLocation().pathname;
-  let maybeToggle = () => isMobile() ? props.toggle("mobileMenuOpen") : _.noop;
+  const currPath = history.getCurrentLocation().pathname;
   return (
     <div className="links">
       <div className="nav-links">
         {links.map(link => {
-          let isActive = currPath.includes(link.slug) ? "active" : "";
+          const isActive = currPath.includes(link.slug) ? "active" : "";
           return (
             <Link
               to={"/app/" + link.slug}
               className={`${isActive}`}
               key={link.slug}
-              onClick={maybeToggle()}>
+              onClick={props.close("mobileMenuOpen")}>
               <i className={`fa fa-${link.icon}`} />
               {link.name}
             </Link>

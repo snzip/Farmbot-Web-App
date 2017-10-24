@@ -7,13 +7,14 @@ import { isUndefined, noop } from "lodash";
 import { semverCompare, SemverResult } from "../../util";
 import * as _ from "lodash";
 import { Row, Col } from "../../ui/index";
+import { JobProgress, Configuration } from "farmbot/dist";
 
 export let OsUpdateButton = ({ bot }: BotProp) => {
-  let osUpdateBool = bot.hardware.configuration.os_auto_update;
+  const osUpdateBool = bot.hardware.configuration.os_auto_update;
   let buttonStr = "Can't Connect to bot";
   let buttonColor = "yellow";
-  let { currentOSVersion } = bot;
-  let { controller_version } = bot.hardware.informational_settings;
+  const { currentOSVersion } = bot;
+  const { controller_version } = bot.hardware.informational_settings;
   if (_.isString(currentOSVersion) && _.isString(controller_version)) {
     switch (semverCompare(currentOSVersion, controller_version)) {
       case SemverResult.RIGHT_IS_GREATER:
@@ -28,45 +29,53 @@ export let OsUpdateButton = ({ bot }: BotProp) => {
   } else {
     buttonStr = "Can't Connect to release server";
   }
-  let toggleVal = isUndefined(osUpdateBool) ? "undefined" : ("" + osUpdateBool);
-  let downloadProgress = "";
+  const toggleVal = isUndefined(osUpdateBool) ? "undefined" : ("" + osUpdateBool);
+
   // DONT TOUCH THIS!!! SERIOUSLY -- RC 8 August
   // DO NOT REMOVE `|| {}` UNTIL SEPTEMBER.
-  let job = (bot.hardware.jobs || {})["FBOS_OTA"];
-  if (job) {
-    if (job.status == "working") {
-      if (job.unit == "bytes") {
-        let kiloBytes = Math.round(job.bytes / 1024);
-        let megaBytes = Math.round(job.bytes / 1048576);
-        if (kiloBytes < 1) {
-          downloadProgress = job.bytes + "B";
-        } else if (megaBytes < 1) {
-          downloadProgress = kiloBytes + "kB";
-        } else {
-          downloadProgress = megaBytes + "MB";
-        }
-      } else if (job.unit == "percent") {
-        downloadProgress = job.percent + "%";
+  const osUpdateJob = (bot.hardware.jobs || {})["FBOS_OTA"];
+
+  const isWorking = (job: JobProgress | undefined) => job && (job.status == "working");
+
+  function downloadProgress(job: JobProgress | undefined) {
+    if (job && isWorking(job)) {
+      switch (job.unit) {
+        case ("bytes"):
+          const kiloBytes = Math.round(job.bytes / 1024);
+          const megaBytes = Math.round(job.bytes / 1048576);
+          if (kiloBytes < 1) {
+            return job.bytes + "B";
+          } else if (megaBytes < 1) {
+            return kiloBytes + "kB";
+          } else {
+            return megaBytes + "MB";
+          }
+        case ("percent"):
+          return job.percent + "%";
       }
     }
   }
+
   return <div className="updates">
     <Row>
       <Col xs={4}>
         <p>{t("Auto Updates?")}</p>
       </Col>
-      <Col xs={1}>
+      <Col xs={3}>
         <ToggleButton toggleValue={toggleVal}
           toggleAction={() => {
-            let os_auto_update = !osUpdateBool ? 1 : 0;
-            updateConfig({ os_auto_update })(noop);
+            const os_auto_update: Configuration = {
+              os_auto_update: !osUpdateBool ? 1 : 0
+            };
+            updateConfig(os_auto_update)(noop);
           }} />
       </Col>
-      <Col xs={7}>
+      <Col xs={5}>
         <button
           className={"fb-button " + buttonColor}
+          disabled={isWorking(osUpdateJob)}
           onClick={() => checkControllerUpdates()}>
-          {downloadProgress || buttonStr}
+          {downloadProgress(osUpdateJob) || buttonStr}
         </button>
       </Col>
     </Row>

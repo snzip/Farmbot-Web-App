@@ -1,7 +1,8 @@
 module Api
   class UsersController < Api::AbstractController
-
-    skip_before_action :authenticate_user!, only: [:create, :verify]
+    skip_before_action :authenticate_user!, only: [:create,
+                                                   :verify,
+                                                   :resend_verification]
 
     def create
       mutate Users::Create.run(user_params)
@@ -16,11 +17,19 @@ module Api
     end
 
     def verify
-      mutate Users::Verify.run(token: params[:token])
+      user  = params[:token] && User.find_by!(confirmation_token: params[:token])
+      # Two use cases:                  re-confirmation   Email change
+      klass = user.unconfirmed_email? ? Users::Reverify : Users::Verify
+      mutate klass.run(user: user)
     end
 
     def show
       render json: current_device.users
+    end
+
+    def resend_verification
+      mutate Users::ResendVerification
+        .run(user: User.find_by!(email: params[:email]))
     end
 
     private

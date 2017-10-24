@@ -1,7 +1,6 @@
 import * as React from "react";
 import { t } from "i18next";
-import { info, error, success } from "farmbot-toastr";
-import { FarmbotOsProps, FarmbotOsState } from "../interfaces";
+import { FarmbotOsProps } from "../interfaces";
 import {
   saveAccountChanges,
   reboot,
@@ -9,9 +8,7 @@ import {
   factoryReset
 } from "../actions";
 import { OsUpdateButton } from "./os_update_button";
-import { devices } from "../../device";
 import {
-  DropDownItem,
   Widget,
   WidgetHeader,
   WidgetBody,
@@ -19,29 +16,20 @@ import {
   Col,
   SaveBtn
 } from "../../ui/index";
-import { save, edit } from "../../api/crud";
+import { save, edit, refresh } from "../../api/crud";
 import { MustBeOnline } from "../must_be_online";
 import { ToolTips, Content } from "../../constants";
 import { TimezoneSelector } from "../timezones/timezone_selector";
 import { timezoneMismatch } from "../timezones/guess_timezone";
-import { FBSelect } from "../../ui/new_fb_select";
 import { LastSeen } from "./last_seen_widget";
-
-const CAMERA_CHOICES = [
-  { label: "USB Camera", value: "USB" },
-  { label: "Raspberry Pi Camera", value: "RPI" }
-];
+import { CameraSelection } from "./camera_selection";
+import { BoardType } from "./board_type";
 
 export class FarmbotOsSettings
-  extends React.Component<FarmbotOsProps, FarmbotOsState> {
-
-  state: FarmbotOsState = {
-    cameraStatus: "",
-    selectedCamera: undefined
-  };
+  extends React.Component<FarmbotOsProps> {
 
   changeBot = (e: React.ChangeEvent<HTMLInputElement>) => {
-    let { account, dispatch } = this.props;
+    const { account, dispatch } = this.props;
     dispatch(edit(account, { name: e.currentTarget.value }));
   }
 
@@ -54,30 +42,16 @@ export class FarmbotOsSettings
     this.props.dispatch(saveAccountChanges);
   }
 
-  sendOffConfig = (selectedCamera: DropDownItem) => {
-    let message = { "camera": JSON.stringify(selectedCamera.value) };
-    info(t("Sending camera configuration..."), t("Sending"));
-    devices
-      .current
-      .setUserEnv(message)
-      .then(() => {
-        this.setState({ selectedCamera });
-        success(t("Successfully configured camera!"));
-      })
-      .catch(() => error(t("An error occurred during configuration.")));
-  }
-
   handleTimezone = (timezone: string) => {
-    let { account, dispatch } = this.props;
+    const { account, dispatch } = this.props;
     dispatch(edit(account, { timezone }));
     dispatch(save(account.uuid));
   }
 
   maybeWarnTz = () => {
-    let wrongTZ = timezoneMismatch(this.props.account.body.timezone);
+    const wrongTZ = timezoneMismatch(this.props.account.body.timezone);
     if (wrongTZ) {
-      return `Note: The selected timezone for your FarmBot is different than
-        your local browser time.`;
+      return Content.DIFFERENT_TZ_WARNING;
     } else {
       return "";
     }
@@ -85,12 +59,12 @@ export class FarmbotOsSettings
 
   lastSeen = () => {
     return <LastSeen
-      onClick={() => this.props.dispatch(save(this.props.account.uuid))}
+      onClick={() => this.props.dispatch(refresh(this.props.account))}
       device={this.props.account} />;
   }
 
   render() {
-    let { account } = this.props;
+    const { account } = this.props;
 
     return <Widget className="device-widget">
       <form onSubmit={this.saveBot.bind(this)}>
@@ -129,23 +103,8 @@ export class FarmbotOsSettings
               </div>
             </Col>
           </Row>
-          <Row>
-            <Col xs={2}>
-              <label>
-                {t("NETWORK")}
-              </label>
-            </Col>
-            <Col xs={10}>
-              <p>
-                {this.props.bot.connectedToMQTT ?
-                  "connected to " : "OFFLINE! "}
-                {`mqtt://${this.props.auth.token.unencoded.mqtt}`}
-              </p>
-            </Col>
-          </Row>
           <this.lastSeen />
           <MustBeOnline
-            fallback="Some settings are not available when FarmBot is offline."
             status={this.props.bot.hardware.informational_settings.sync_status}
             lockOpen={process.env.NODE_ENV !== "production"}>
             <Row>
@@ -180,8 +139,7 @@ export class FarmbotOsSettings
               </Col>
               <Col xs={7}>
                 <p>
-                  {t(`This will restart FarmBot's Raspberry
-                    Pi and controller software.`)}
+                  {t(Content.RESTART_FARMBOT)}
                 </p>
               </Col>
               <Col xs={3}>
@@ -201,8 +159,7 @@ export class FarmbotOsSettings
               </Col>
               <Col xs={7}>
                 <p>
-                  {t(`This will shutdown FarmBot's Raspberry Pi. To turn it
-                    back on, unplug FarmBot and plug it back in.`)}
+                  {t(Content.SHUTDOWN_FARMBOT)}
                 </p>
               </Col>
               <Col xs={3}>
@@ -234,23 +191,11 @@ export class FarmbotOsSettings
                 </button>
               </Col>
             </Row>
-            <Row>
-              <Col xs={2}>
-                <label>
-                  {t("CAMERA")}
-                </label>
-              </Col>
-              <Col xs={7}>
-                <div>
-                  <FBSelect
-                    allowEmpty={true}
-                    list={CAMERA_CHOICES}
-                    selectedItem={this.state.selectedCamera}
-                    placeholder="Select a camera..."
-                    onChange={this.sendOffConfig} />
-                </div>
-              </Col>
-            </Row>
+            <CameraSelection
+              env={this.props.bot.hardware.user_env} />
+            <BoardType
+              firmwareVersion={this.props.bot.hardware
+                .informational_settings.firmware_version} />
           </MustBeOnline>
         </WidgetBody>
       </form>

@@ -6,11 +6,12 @@ import { success, error } from "farmbot-toastr";
 import { Widget, WidgetHeader, WidgetBody } from "../../ui/index";
 import { ImageFlipper } from "./image_flipper";
 import { PhotosProps } from "./interfaces";
-import { devices } from "../../device";
+import { getDevice } from "../../device";
 import { ToolTips } from "../../constants";
 import { selectImage } from "./actions";
 import { WidgetFooter } from "../../ui/widget_footer";
 import { safeStringFetch } from "../../util";
+import { destroy } from "../../api/crud";
 
 interface MetaInfoProps {
   /** Default conversion is `attr_name ==> Attr Name`.
@@ -18,15 +19,16 @@ interface MetaInfoProps {
    */
   label?: string;
   attr: string;
+  // tslint:disable-next-line:no-any
   obj: any; /** Really, it's OK here! See safeStringFetch */
 }
 
 function MetaInfo({ obj, attr, label }: MetaInfoProps) {
-  let top = label || _.startCase(attr.split("_").join());
-  let bottom = safeStringFetch(obj, attr);
+  const top = label || _.startCase(attr.split("_").join());
+  const bottom = safeStringFetch(obj, attr);
   return (
     <div>
-      <label>{top}:&nbsp;&nbsp;</label>
+      <label>{top}:</label>
       <span>{bottom || "unknown"}</span>
     </div>
   );
@@ -35,15 +37,15 @@ function MetaInfo({ obj, attr, label }: MetaInfoProps) {
 export class Photos extends React.Component<PhotosProps, {}> {
 
   takePhoto = () => {
-    let ok = () => success(t("Processing now. Refresh page to see result."));
-    let no = () => error("Error taking photo");
-    devices.current.takePhoto().then(ok, no);
+    const ok = () => success(t("Processing now. Refresh page to see result."));
+    const no = () => error(t("Error taking photo"));
+    getDevice().takePhoto().then(ok, no);
   }
 
   metaDatas() {
-    let i = this.props.currentImage;
+    const i = this.props.currentImage;
     if (i) {
-      let { meta } = i.body;
+      const { meta } = i.body;
       return Object.keys(meta).sort().map(function (key, index) {
         return <MetaInfo key={index} attr={key} obj={meta} />;
       });
@@ -52,8 +54,17 @@ export class Photos extends React.Component<PhotosProps, {}> {
     }
   }
 
+  destroy = () => {
+    const img = this.props.currentImage || this.props.images[0];
+    if (img && img.uuid) {
+      this.props.dispatch(destroy(img.uuid))
+        .then(() => success(t("Image Deleted."), t("Success")))
+        .catch(() => error(t("Could not delete image."), t("Error")));
+    }
+  }
+
   render() {
-    let image = this.props.currentImage;
+    const image = this.props.currentImage;
     return (
       <Widget className="photos-widget">
         <WidgetHeader helpText={ToolTips.PHOTOS} title={"Photos"}>
@@ -61,6 +72,11 @@ export class Photos extends React.Component<PhotosProps, {}> {
             className="fb-button gray"
             onClick={this.takePhoto}>
             {t("Take Photo")}
+          </button>
+          <button
+            className="fb-button red"
+            onClick={() => this.destroy()}>
+            {t("Delete Photo")}
           </button>
         </WidgetHeader>
         <WidgetBody>
@@ -72,8 +88,8 @@ export class Photos extends React.Component<PhotosProps, {}> {
         <WidgetFooter>
           {/** Separated from <MetaInfo /> for stylistic purposes. */}
           {image ?
-            <div>
-              <label>{t("Created At")}</label>
+            <div className="image-created-at">
+              <label>{t("Created At:")}</label>
               <span>
                 {moment(image.body.created_at).format("MMMM Do, YYYY h:mma")}
               </span>

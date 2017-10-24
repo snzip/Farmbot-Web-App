@@ -3,17 +3,19 @@ describe Api::PasswordResetsController do
   include Devise::Test::ControllerHelpers
 
   describe '#create' do
-    let(:user) { FactoryGirl.create(:user) }
+    let(:user) { FactoryBot.create(:user) }
 
     it 'resets password for a user' do
       params = { email: user.email }
 
       old_email_count = ActionMailer::Base.deliveries.length
-      post :create, params: params
-      expect(response.status).to eq(200)
-      expect(ActionMailer::Base.deliveries.length).to be > old_email_count
-      message = last_email.to_s
-      expect(message).to include("password reset")
+      run_jobs_now do
+        post :create, params: params
+        expect(response.status).to eq(200)
+        expect(ActionMailer::Base.deliveries.length).to be > old_email_count
+        message = last_email.to_s
+        expect(message).to include("password reset")
+      end
     end
 
     it 'resets password using a reset token' do

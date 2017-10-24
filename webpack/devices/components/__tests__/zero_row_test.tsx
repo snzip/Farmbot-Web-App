@@ -1,22 +1,21 @@
+const mockDevice = {
+  setZero: jest.fn()
+};
 jest.mock("../../../device", () => ({
-  devices: {
-    current: {
-      setZero: jest.fn()
-    }
-  }
+  getDevice: () => (mockDevice)
 }));
 import * as React from "react";
 import { mount } from "enzyme";
 import { ZeroRow } from "../zero_row";
-import { devices } from "../../../device";
+import { getDevice } from "../../../device";
 
 describe("<HomingRow />", () => {
   beforeEach(function () {
     jest.clearAllMocks();
   });
   it("calls device", () => {
-    let { mock } = devices.current.setZero as jest.Mock<{}>;
-    let result = mount(<ZeroRow />);
+    const { mock } = getDevice().setZero as jest.Mock<{}>;
+    const result = mount(<ZeroRow />);
     result.find("ZeroButton").at(0).simulate("click");
     result.find("ZeroButton").at(1).simulate("click");
     result.find("ZeroButton").at(2).simulate("click");

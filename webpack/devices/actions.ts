@@ -1,118 +1,114 @@
-import { Farmbot } from "farmbot";
 import { t } from "i18next";
 import axios from "axios";
 import * as _ from "lodash";
 import { success, warning, info, error } from "farmbot-toastr";
-import { devices } from "../device";
-import { Log } from "../interfaces";
+import { getDevice } from "../device";
+import { Log, Everything } from "../interfaces";
 import { GithubRelease, MoveRelProps } from "./interfaces";
 import { Thunk, GetState } from "../redux/interfaces";
 import { BotState } from "../devices/interfaces";
 import {
   McuParams,
   Configuration,
-  BotStateTree,
-  ALLOWED_CHANNEL_NAMES,
-  ALLOWED_MESSAGE_TYPES,
   SyncStatus
 } from "farmbot";
 import { Sequence } from "../sequences/interfaces";
-import { HardwareState, ControlPanelState } from "../devices/interfaces";
+import { ControlPanelState } from "../devices/interfaces";
 import { API } from "../api/index";
 import { User } from "../auth/interfaces";
-import { init } from "../api/crud";
 import { getDeviceAccountSettings } from "../resources/selectors";
 import { TaggedDevice } from "../resources/tagged_resources";
 import { versionOK } from "./reducer";
-import { oneOf, HttpData } from "../util";
-import { Actions } from "../constants";
+import { HttpData, oneOf } from "../util";
+import { Actions, Content } from "../constants";
+import { mcuParamValidator } from "./update_interceptor";
 
 const ON = 1, OFF = 0;
-type configKey = keyof McuParams;
+export type ConfigKey = keyof McuParams;
 export const EXPECTED_MAJOR = 5;
 export const EXPECTED_MINOR = 0;
+// Already filtering messages in FarmBot OS and the API- this is just for
+// an additional layer of safety. If sensitive data ever hits a client, it will
+// be reported to Rollbar for investigation.
+const BAD_WORDS = ["WPA", "PSK", "PASSWORD", "NERVES"];
 
-function incomingStatus(statusMessage: HardwareState) {
-  return { type: "BOT_CHANGE", payload: statusMessage };
+// tslint:disable-next-line:no-any
+export function isLog(x: any): x is Log {
+  const yup = _.isObject(x) && _.isString(_.get(x, "message" as keyof Log));
+  if (yup) {
+    if (oneOf(BAD_WORDS, x.message.toUpperCase())) {// SECURITY CRITICAL CODE.
+      throw new Error("Refusing to display log: " + JSON.stringify(x));
+    }
+    return true;
+  } else {
+    return false;
+  }
 }
-
-export function isLog(x: object): x is Log {
-  return _.isObject(x) && _.isString(_.get(x, "message" as keyof Log));
-}
-let commandErr = (noun = "Command") => (x: any) => {
+const commandErr = (noun = "Command") => (x: {}) => {
   console.dir(x);
   console.info("Took longer than 6 seconds: " + noun);
 };
 
-let commandOK = (noun = "Command") => () => {
-  let msg = noun + " request sent to device.";
+export const commandOK = (noun = "Command") => () => {
+  const msg = noun + " request sent to device.";
   success(msg, t("Request sent"));
 };
 
 export function checkControllerUpdates() {
-  let noun = "Check for Updates";
-  devices
-    .current
+  const noun = "Check for Updates";
+  getDevice()
     .checkUpdates()
     .then(commandOK(noun), commandErr(noun));
 }
 
 export function powerOff() {
-  let noun = "Power Off Bot";
-  devices
-    .current
+  const noun = "Power Off Bot";
+  getDevice()
     .powerOff()
     .then(commandOK(noun), commandErr(noun));
 }
 
 export function factoryReset() {
-  if (!confirm(`WAIT! This will erase EVERYTHING stored on your device SD card.
-  Are you sure?`)) {
+  if (!confirm(t(Content.FACTORY_RESET_ALERT))) {
     return;
   }
-  devices
-    .current
-    .resetOS();
+  getDevice().resetOS();
 }
 
 export function reboot() {
-  let noun = "Reboot Bot";
-  devices
-    .current
+  const noun = "Reboot Bot";
+  getDevice()
     .reboot()
     .then(commandOK(noun), commandErr(noun));
 }
 
 export function emergencyLock() {
-  let noun = "Emergency stop";
-  devices
-    .current
+  const noun = "Emergency stop";
+  getDevice()
     .emergencyLock()
     .then(commandOK(noun), commandErr(noun));
 }
 
 export function emergencyUnlock() {
-  let noun = "Emergency unlock";
+  const noun = "Emergency unlock";
   if (confirm(`Are you sure you want to unlock the device?`)) {
-    devices
-      .current
+    getDevice()
       .emergencyUnlock()
       .then(commandOK(noun), commandErr(noun));
   }
 }
 
 export function sync(): Thunk {
-  let noun = "Sync";
+  const noun = "Sync";
   return function (dispatch, getState) {
-    let IS_OK = versionOK(getState()
+    const IS_OK = versionOK(getState()
       .bot
       .hardware
       .informational_settings
       .controller_version, EXPECTED_MAJOR, EXPECTED_MINOR);
     if (IS_OK) {
       dispatch(setSyncStatus("syncing"));
-      devices
-        .current
+      getDevice()
         .sync()
         .then(() => {
           commandOK(noun);
@@ -129,7 +125,7 @@ export function sync(): Thunk {
         .controller_version) {
         badVersion();
       } else {
-        info("FarmBot is not connected.", "Disconnected", "red");
+        info(t("FarmBot is not connected."), t("Disconnected"), "red");
       }
     }
   };
@@ -138,8 +134,7 @@ export function sync(): Thunk {
 export function execSequence(sequence: Sequence) {
   const noun = "Sequence execution";
   if (sequence.id) {
-    return devices
-      .current
+    return getDevice()
       .execSequence(sequence.id)
       .then(commandOK(noun), commandErr(noun));
   } else {
@@ -156,15 +151,15 @@ export let fetchReleases =
     axios
       .get(url)
       .then((resp: HttpData<GithubRelease>) => {
-        let version = resp.data.tag_name;
-        let versionWithoutV = version.toLowerCase().replace("v", "");
+        const version = resp.data.tag_name;
+        const versionWithoutV = version.toLowerCase().replace("v", "");
         dispatch({
-          type: "FETCH_OS_UPDATE_INFO_OK",
+          type: Actions.FETCH_OS_UPDATE_INFO_OK,
           payload: versionWithoutV
         });
       })
       .catch((ferror) => {
-        error(t("Could not download firmware update information."));
+        error(t("Could not download FarmBot OS update information."));
         dispatch({
           type: "FETCH_OS_UPDATE_INFO_ERROR",
           payload: ferror
@@ -177,7 +172,7 @@ export function save(input: TaggedDevice) {
     return axios
       .put(API.current.devicePath, input.body)
       .then((resp: HttpData<User>) => dispatch({ type: "SAVE_DEVICE_OK", payload: resp.data }))
-      .catch(resp => error("Error saving device settings."));
+      .catch(resp => error(t("Error saving device settings.")));
   };
 }
 
@@ -189,26 +184,28 @@ export function toggleControlPanel(payload: keyof ControlPanelState) {
   return { type: "TOGGLE_CONTROL_PANEL_OPTION", payload };
 }
 
-export function MCUFactoryReset() {
-  return devices.current.resetMCU();
+export function bulkToggleControlPanel(payload: boolean) {
+  return { type: "BULK_TOGGLE_CONTROL_PANEL", payload };
 }
 
-export function botConfigChange(key: configKey, value: number) {
-  let noun = "Setting toggle";
+export function MCUFactoryReset() {
+  return getDevice().resetMCU();
+}
 
-  return devices
-    .current
+export function botConfigChange(key: ConfigKey, value: number) {
+  const noun = "Setting toggle";
+
+  return getDevice()
     .updateMcu({ [key]: value })
     .then(_.noop, commandErr(noun));
 }
 
 export function settingToggle(
-  name: configKey, bot: BotState, displayAlert: string | undefined
+  name: ConfigKey, bot: BotState, displayAlert: string | undefined
 ) {
   if (displayAlert) { alert(displayAlert.replace(/\s+/g, " ")); }
-  let noun = "Setting toggle";
-  return devices
-    .current
+  const noun = "Setting toggle";
+  return getDevice()
     .updateMcu({
       [name]: ((bot.hardware.mcu_params)[name] === 0) ? ON : OFF
     })
@@ -216,149 +213,73 @@ export function settingToggle(
 }
 
 export function moveRelative(props: MoveRelProps) {
-  return devices
-    .current
+  return getDevice()
     .moveRelative(props)
     .then(_.noop, commandErr("Relative movement"));
 }
 
 export function moveAbs(props: MoveRelProps) {
   const noun = "Absolute movement";
-  return devices
-    .current
+  return getDevice()
     .moveAbsolute(props)
     .then(_.noop, commandErr(noun));
 }
 
 export function pinToggle(pin_number: number) {
   const noun = "Setting toggle";
-  return devices
-    .current
+  return getDevice()
     .togglePin({ pin_number })
     .then(_.noop, commandErr(noun));
 }
 
 export function homeAll(speed: number) {
-  let noun = "'Home All' command";
-  devices
-    .current
+  const noun = "'Home All' command";
+  getDevice()
     .home({ axis: "all", speed })
     .then(commandOK(noun), commandErr(noun));
 }
 
-function readStatus() {
-  let noun = "'Read Status' command";
-  return devices
-    .current
-    .readStatus()
-    .then(() => { commandOK(noun); }, () => { });
-}
-
-let NEED_VERSION_CHECK = true;
-// Already filtering messages in FarmBot OS and the API- this is just for
-// an additional layer of safety. If sensitive data ever hits a client, it will
-// be reported to ROllbar for investigation.
-type ConnectDeviceReturn = {} | ((dispatch: Function) => void);
-const BAD_WORDS = ["WPA", "PSK", "PASSWORD", "NERVES"];
-export function connectDevice(token: string): ConnectDeviceReturn {
-  return (dispatch: Function, getState: GetState) => {
-    let secure = location.protocol === "https:";
-    let bot = new Farmbot({ token, secure });
-    bot.on("online", () => dispatch(setMqttStatus(true)));
-    bot.on("offline", () => {
-      dispatch(setMqttStatus(false));
-      error(t("Your web browser is unable to connect to the message broker " +
-        "(MQTT). You might be behind a firewall or disconnected from the " +
-        "Internet. Check your network settings."));
-    });
-    return bot
-      .connect()
-      .then(() => {
-        devices.online = true;
-        devices.current = bot;
-        _.set(window, "current_bot", bot);
-        readStatus()
-          .then(() => bot.setUserEnv(
-            { "LAST_CLIENT_CONNECTED": JSON.stringify(new Date()) }
-          ))
-          .catch(() => { });
-        bot.on("logs", function (msg: Log) {
-          if (isLog(msg) && !oneOf(BAD_WORDS, msg.message.toUpperCase())) {
-            maybeShowLog(msg);
-            dispatch(init({
-              kind: "logs",
-              specialStatus: undefined,
-              uuid: "MUST_CHANGE",
-              body: msg
-            }));
-          } else {
-            throw new Error("Refusing to display log: " + JSON.stringify(msg));
-          }
-        });
-        bot.on("status", _.throttle(function (msg: BotStateTree) {
-          dispatch(incomingStatus(msg));
-          if (NEED_VERSION_CHECK) {
-            let IS_OK = versionOK(getState()
-              .bot
-              .hardware
-              .informational_settings
-              .controller_version, EXPECTED_MAJOR, EXPECTED_MINOR);
-            if (!IS_OK) { badVersion(); }
-            NEED_VERSION_CHECK = false;
-          }
-
-        }, 500));
-
-        let alreadyToldYou = false;
-        bot.on("malformed", function () {
-          if (!alreadyToldYou) {
-            warning(t(`FarmBot sent a malformed message. You may need to upgrade
-            FarmBot OS. Please upgrade FarmBot OS and log back in.`));
-            alreadyToldYou = true;
-          }
-        });
-      }, (err) => dispatch(fetchDeviceErr(err)));
-  };
-}
-
-function fetchDeviceErr(err: Error) {
+const startUpdate = () => {
   return {
-    type: "FETCH_DEVICE_ERR",
-    payload: err
+    type: Actions.SETTING_UPDATE_START,
+    payload: undefined
   };
-}
-
-let startUpdate = (dispatch: Function) => {
-  dispatch({ type: "SETTING_UPDATE_START", payload: undefined });
 };
 
-let updateOK = (dispatch: Function, noun: string) => {
+const updateOK = (dispatch: Function, noun: string) => {
   dispatch({ type: "SETTING_UPDATE_END", payload: undefined });
   commandOK(noun);
 };
 
-let updateNO = (dispatch: Function, noun: string) => {
+const updateNO = (dispatch: Function, noun: string) => {
   dispatch({ type: "SETTING_UPDATE_END", payload: undefined });
   commandErr(noun);
 };
 
-export function updateMCU(key: configKey, val: string) {
-  let noun = "configuration update";
-  return function (dispatch: Function) {
-    startUpdate(dispatch);
-    devices
-      .current
-      .updateMcu({ [key]: val })
-      .then(() => updateOK(dispatch, noun))
-      .catch(() => updateNO(dispatch, noun));
+export function updateMCU(key: ConfigKey, val: string) {
+  const noun = "configuration update";
+  return function (dispatch: Function, getState: () => Everything) {
+    const state = getState().bot.hardware.mcu_params;
+
+    function proceed() {
+      dispatch(startUpdate());
+      getDevice()
+        .updateMcu({ [key]: val })
+        .then(() => updateOK(dispatch, noun))
+        .catch(() => updateNO(dispatch, noun));
+    }
+
+    const dont = (err: string) => warning(err);
+
+    const validate = mcuParamValidator(key, parseInt(val, 10), state);
+    validate(proceed, dont);
   };
 }
 
 export function updateConfig(config: Configuration) {
-  let noun = "Update Config";
+  const noun = "Update Config";
   return function (dispatch: Function) {
-    devices
-      .current
+    getDevice()
       .updateConfig(config)
       .then(() => updateOK(dispatch, noun))
       .catch(() => updateNO(dispatch, noun));
@@ -372,37 +293,10 @@ export function changeStepSize(integer: number) {
   };
 }
 
-const CHANNELS: keyof Log = "channels";
-const TOAST: ALLOWED_CHANNEL_NAMES = "toast";
-
-function maybeShowLog(log: Log) {
-  let chanList = _.get(log, CHANNELS, ["ERROR FETCHING CHANNELS"]);
-  let m = log.meta.type as ALLOWED_MESSAGE_TYPES;
-  const TITLE = "New message from bot";
-  if (chanList.includes(TOAST)) {
-    switch (m) {
-      case "success":
-        return success(log.message, TITLE);
-      case "busy":
-      case "warn":
-      case "error":
-        return error(log.message, TITLE);
-      case "fun":
-      case "info":
-      default:
-        return info(log.message, TITLE);
-    }
-  }
-}
-
 export function setSyncStatus(payload: SyncStatus) {
   return { type: "SET_SYNC_STATUS", payload };
 }
 
-function badVersion() {
-  info("You are running an old version of FarmBot OS.", "Please Update", "red");
+export function badVersion() {
+  info(t("You are running an old version of FarmBot OS."), t("Please Update"), "red");
 }
-
-export let setMqttStatus = (payload: boolean) => ({
-  type: Actions.SET_MQTT_STATUS, payload
-});

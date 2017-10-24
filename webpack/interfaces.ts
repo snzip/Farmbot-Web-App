@@ -1,10 +1,11 @@
 import { AuthState } from "./auth/interfaces";
 import { ConfigState } from "./config/interfaces";
 import { BotState } from "./devices/interfaces";
-import { Color as FarmBotJsColor } from "farmbot";
+import { Color as FarmBotJsColor, ALLOWED_MESSAGE_TYPES } from "farmbot";
 import { DraggableState } from "./draggable/interfaces";
 import { PeripheralState } from "./controls/peripherals/interfaces";
 import { RestResources } from "./resources/interfaces";
+import { ConnectionState } from "./connectivity/interfaces";
 
 /** Regimens and sequences may have a "color" which determines how it looks
     in the UI. Only certain colors are valid. */
@@ -24,7 +25,7 @@ export interface SelectOptionsParams {
 export interface Log {
   id?: number | undefined;
   message: string;
-  meta: { type: string; };
+  meta: { type: ALLOWED_MESSAGE_TYPES; };
   channels: string[];
   created_at: number;
 }
@@ -46,6 +47,7 @@ interface Location {
 }
 
 export interface Everything {
+  connectivity: ConnectionState;
   config: ConfigState;
   auth: AuthState | undefined;
   dispatch: Function;
@@ -63,6 +65,7 @@ export interface Everything {
  *  In those cases, we can use the `UnsafeError` type instead of `any`, just to
  *  quiet down the linter and to let others know it is inherently unsafe.
  */
+// tslint:disable-next-line:no-any
 export type UnsafeError = any;
 
 interface BasePoint {

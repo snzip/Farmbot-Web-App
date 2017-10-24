@@ -6,7 +6,7 @@ import { Thunk } from "../../redux/interfaces";
 import { API } from "../../api";
 import { Progress, ProgressCallback, HttpData } from "../../util";
 import { GenericPointer } from "../../interfaces";
-import { devices } from "../../device";
+import { getDevice } from "../../device";
 import { WDENVKey } from "./remote_env/interfaces";
 import { NumericValues } from "./image_workspace";
 import { envSave } from "./remote_env/actions";
@@ -21,17 +21,18 @@ export let translateImageWorkspaceAndSave = (map: Translation) => {
 };
 
 export function resetWeedDetection(cb: ProgressCallback): Thunk {
+  // TODO: Generalize and add to api/crud.ts
   return async function (dispatch, getState) {
     const URL = API.current.pointSearchPath;
     try {
-      let resp: HttpData<GenericPointer[]> = await axios.post(URL, QUERY);
-      let ids = resp.data.map(x => x.id);
+      const resp: HttpData<GenericPointer[]> = await axios.post(URL, QUERY);
+      const ids = resp.data.map(x => x.id);
       // If you delete too many points, you will violate the URL length
       // limitation of 2,083. Chunking helps fix that.
-      let chunks = _.chunk(ids, 179 /* Prime numbers, why not? */);
-      let prog = new Progress(chunks.length, cb);
+      const chunks = _.chunk(ids, 179 /* Prime numbers, why not? */);
+      const prog = new Progress(chunks.length, cb);
       prog.inc();
-      let promises = chunks.map(function (chunk) {
+      const promises = chunks.map(function (chunk) {
         return axios
           .delete(API.current.pointsPath + chunk.join(","))
           .then(function (x) {
@@ -63,8 +64,7 @@ const label = "PLANT_DETECTION_selected_image";
 
 export function scanImage(imageId: number) {
   return function () {
-    devices
-      .current
+    getDevice()
       .execScript("historical-plant-detection", [{
         kind: "pair", args: { label: label, value: "" + imageId }
       }]);
@@ -73,6 +73,6 @@ export function scanImage(imageId: number) {
 
 export function test() {
   return function () {
-    devices.current.execScript("plant-detection");
+    getDevice().execScript("plant-detection");
   };
 }

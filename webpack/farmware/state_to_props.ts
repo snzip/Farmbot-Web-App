@@ -5,15 +5,17 @@ import { prepopulateEnv } from "./weed_detector/remote_env/selectors";
 import * as _ from "lodash";
 
 export function mapStateToProps(props: Everything): FarmwareProps {
-  let images = _(selectAllImages(props.resources.index))
+  const images = _(selectAllImages(props.resources.index))
     .sortBy(x => x.body.id)
     .reverse()
     .value();
 
-  let currentImage = images
-    .filter(i => i.uuid === props.resources.consumers.farmware.currentImage)[0];
-  let { farmwares } = props.bot.hardware.process_info;
-  let syncStatus = props
+  const firstImage = images[0];
+  const currentImage = images
+    .filter(i => i.uuid === props.resources.consumers.farmware.currentImage)[0]
+    || firstImage;
+  const { farmwares } = props.bot.hardware.process_info;
+  const syncStatus = props
     .bot
     .hardware
     .informational_settings
@@ -22,6 +24,7 @@ export function mapStateToProps(props: Everything): FarmwareProps {
     farmwares,
     syncStatus,
     env: prepopulateEnv(props.bot.hardware.user_env),
+    user_env: props.bot.hardware.user_env,
     dispatch: props.dispatch,
     currentImage,
     images

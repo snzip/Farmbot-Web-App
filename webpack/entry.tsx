@@ -1,19 +1,15 @@
 /// <reference path="../typings/index.d.ts" />
-import { RootComponent } from "./routes";
-import { store } from "./redux/store";
-import { ready } from "./config/actions";
+/**
+ * THIS IS THE ENTRY POINT FOR THE MAIN PORTION OF THE WEB APP.
+ *
+ * Try to keep this file light. */
 import { detectLanguage } from "./i18n";
-import * as i18next from "i18next";
-import { stopIE, attachToRoot, shortRevision } from "./util";
+import { stopIE, shortRevision } from "./util";
+import { init } from "i18next";
+import { attachAppToDom } from "./routes";
 
 stopIE();
 
-let r = shortRevision();
-console.log(r);
+console.log(shortRevision());
 
-detectLanguage().then((config) => {
-  i18next.init(config, (err, t) => {
-    attachToRoot(RootComponent, { store });
-    store.dispatch(ready());
-  });
-});
+detectLanguage().then(config => init(config, attachAppToDom));

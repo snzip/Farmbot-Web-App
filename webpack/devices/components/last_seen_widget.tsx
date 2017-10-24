@@ -10,15 +10,15 @@ interface LastSeenProps {
 }
 
 export class LastSeen extends React.Component<LastSeenProps, {}> {
-  get lastSeen() { return this.props.device.body.last_seen; }
+  get lastSeen() { return this.props.device.body.last_saw_api; }
   show = (): string => {
     if (this.props.device.specialStatus) {
       return t("Loading...");
     }
 
     if (this.lastSeen) {
-      let text = " FarmBot was last seen {{ lastSeen }}";
-      let data = {
+      const text = " FarmBot was last seen {{ lastSeen }}";
+      const data = {
         lastSeen: moment(this.lastSeen).local().format("MMMM D, h:mma")
       };
       return t(text, data);
@@ -37,7 +37,8 @@ export class LastSeen extends React.Component<LastSeenProps, {}> {
       </Col>
       <Col xs={7}>
         <p>
-          <i className="fa fa-refresh" onClick={this.props.onClick}></i>{this.show()}
+          <i className="fa fa-refresh" onClick={this.props.onClick}></i>
+          {this.show()}
         </p>
       </Col>
     </Row>;

@@ -1,5 +1,5 @@
 import * as React from "react";
-import { MCUFactoryReset } from "../actions";
+import { MCUFactoryReset, bulkToggleControlPanel } from "../actions";
 import { Widget, WidgetHeader, WidgetBody } from "../../ui/index";
 import { HardwareSettingsProps } from "../interfaces";
 import { MustBeOnline } from "../must_be_online";
@@ -18,12 +18,13 @@ export class HardwareSettings extends
   React.Component<HardwareSettingsProps, {}> {
 
   render() {
-    let { bot, dispatch } = this.props;
+    const { bot, dispatch } = this.props;
 
     return (
       <Widget className="hardware-widget">
         <WidgetHeader title="Hardware" helpText={ToolTips.HW_SETTINGS}>
           <MustBeOnline
+            hideBanner={true}
             status={bot.hardware.informational_settings.sync_status}
             lockOpen={process.env.NODE_ENV !== "production"}>
             <SaveBtn
@@ -35,8 +36,17 @@ export class HardwareSettings extends
           </MustBeOnline>
         </WidgetHeader>
         <WidgetBody>
+          <button
+            className={"fb-button gray no-float"}
+            onClick={() => dispatch(bulkToggleControlPanel(true))}>
+            Expand All
+          </button>
+          <button
+            className={"fb-button gray no-float"}
+            onClick={() => dispatch(bulkToggleControlPanel(false))}>
+            Collapse All
+          </button>
           <MustBeOnline
-            fallback="Device is offline."
             status={bot.hardware.informational_settings.sync_status}
             lockOpen={process.env.NODE_ENV !== "production"}>
             <div className="label-headings">

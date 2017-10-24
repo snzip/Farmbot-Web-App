@@ -4,11 +4,12 @@ import * as _ from "lodash";
 import { GardenPlant } from "../garden_plant";
 import { PlantLayerProps, CropSpreadDict } from "../interfaces";
 import { defensiveClone } from "../../../util";
+import { history } from "../../../history";
 
-let cropSpreadDict: CropSpreadDict = {};
+const cropSpreadDict: CropSpreadDict = {};
 
 export function PlantLayer(props: PlantLayerProps) {
-  let {
+  const {
     crops,
     plants,
     dispatch,
@@ -16,16 +17,22 @@ export function PlantLayer(props: PlantLayerProps) {
     currentPlant,
     dragging,
     editing,
-    botOriginQuadrant
+    mapTransformProps
   } = props;
 
   crops
     .filter(c => !!c.body.spread)
     .map(c => cropSpreadDict[c.body.slug] = c.body.spread);
 
-  if (visible) {
-    return <g>
-      {plants
+  const pathName = history.getCurrentLocation().pathname;
+  const clickToAddMode = pathName.split("/")[6] == "add";
+  const selectMode = pathName.split("/")[4] == "select";
+  const maybeNoPointer = (clickToAddMode || selectMode)
+    ? { "pointerEvents": "none" } : {};
+
+  return <g id="plant-layer">
+    {visible &&
+      plants
         .filter(x => !!x.body.id)
         .map(p => defensiveClone(p))
         .map(p => {
@@ -40,23 +47,22 @@ export function PlantLayer(props: PlantLayerProps) {
           };
         })
         .map(p => {
-          let action = { type: "SELECT_PLANT", payload: p.uuid };
           return <Link className="plant-link-wrapper"
+            style={maybeNoPointer}
             to={"/app/designer/plants/" + p.plantId}
             id={p.plantId}
             onClick={_.noop}
             key={p.plantId}>
             <GardenPlant
-              quadrant={botOriginQuadrant}
+              uuid={p.uuid}
+              mapTransformProps={mapTransformProps}
               plant={p.plant}
               selected={p.selected}
               dragging={p.selected && dragging && editing}
-              onClick={() => dispatch(action)}
-              dispatch={props.dispatch} />
+              dispatch={dispatch}
+              zoomLvl={props.zoomLvl}
+              activeDragXY={props.activeDragXY} />
           </Link>;
         })}
-    </g>;
-  } else {
-    return <g />;
-  }
+  </g>;
 }

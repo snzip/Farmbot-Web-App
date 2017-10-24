@@ -35,6 +35,7 @@ import { TzWarning } from "./tz_warning";
 import { FarmEventRepeatForm } from "./farm_event_repeat_form";
 import { scheduleForFarmEvent } from "./calendar/scheduler";
 import { executableType } from "../util";
+import { Content } from "../../constants";
 
 type FormEvent = React.SyntheticEvent<HTMLInputElement>;
 export const NEVER: TimeUnit = "never";
@@ -72,7 +73,7 @@ function destructureFarmEvent(fe: TaggedFarmEvent): FarmEventViewModel {
  * that can be used to apply updates (such as a PUT request to the API). */
 export function recombine(vm: FarmEventViewModel): Partial<TaggedFarmEvent["body"]> {
   // Make sure that `repeat` is set to `never` when dealing with regimens.
-  let isReg = vm.executable_type === "Regimen";
+  const isReg = vm.executable_type === "Regimen";
   return {
     start_time: moment(vm.startDate + " " + vm.startTime).toISOString(),
     end_time: moment(vm.endDate + " " + vm.endTime).toISOString(),
@@ -115,8 +116,8 @@ export class EditFEForm extends React.Component<EditFEProps, State> {
   get viewModel() { return destructureFarmEvent(this.props.farmEvent); }
 
   get executable() {
-    let et = this.fieldGet("executable_type");
-    let id = parseInt(this.fieldGet("executable_id"));
+    const et = this.fieldGet("executable_type");
+    const id = parseInt(this.fieldGet("executable_id"));
     if (et === "Sequence" || et === "Regimen") {
       return this.props.findExecutable(et, id);
     } else {
@@ -126,7 +127,7 @@ export class EditFEForm extends React.Component<EditFEProps, State> {
 
   executableSet = (e: DropDownItem) => {
     if (e.value) {
-      let update: Partial<State> = {
+      const update: Partial<State> = {
         fe: {
           executable_type: executableType(e.headingId),
           executable_id: (e.value || "").toString()
@@ -138,7 +139,7 @@ export class EditFEForm extends React.Component<EditFEProps, State> {
   }
 
   executableGet = (): DropDownItem => {
-    let headingId: ExecutableType =
+    const headingId: ExecutableType =
       (this.executable.kind === "sequences") ?
         "Sequence" : "Regimen";
     return {
@@ -167,38 +168,34 @@ export class EditFEForm extends React.Component<EditFEProps, State> {
   }
 
   toggleRepeat = (e: React.ChangeEvent<HTMLInputElement>) => {
-    let { checked } = e.currentTarget;
+    const { checked } = e.currentTarget;
     this.mergeState("timeUnit", (!checked || this.isReg) ? "never" : "daily");
   };
 
   commitViewModel = () => {
-    let partial = recombine(betterMerge(this.viewModel, this.state.fe));
+    const partial = recombine(betterMerge(this.viewModel, this.state.fe));
     this.dispatch(edit(this.props.farmEvent, partial));
     this
       .dispatch(save(this.props.farmEvent.uuid))
       .then(() => {
         this.setState({ specialStatusLocal: undefined });
         history.push("/app/designer/farm_events");
-        let frmEvnt = this.props.farmEvent;
-        let nextRun = _.first(scheduleForFarmEvent(frmEvnt.body));
+        const frmEvnt = this.props.farmEvent;
+        const nextRun = _.first(scheduleForFarmEvent(frmEvnt.body));
         if (nextRun) {
           // TODO: Internationalizing this will be a challenge.
           success(`This Farm Event will run ${nextRun.fromNow()}, but
-            you must first SYNC YOUR DEVICE. If you do not sync, the event will\
-            not run.`);
+            you must first SYNC YOUR DEVICE. If you do not sync, the event will
+            not run.`.replace(/\s+/g, " "));
           this.props.dispatch(maybeWarnAboutMissedTasks(frmEvnt, function () {
-            alert(`You are scheduling a regimen to run today. Be aware that
-              running a regimen too late in the day may result in skipped
-              regimen tasks. Consider rescheduling this event to tomorrow if
-              this is a concern.`.replace(/\s+/g, " "));
+            alert(t(Content.REGIMEN_TODAY_SKIPPED_ITEM_RISK));
           }));
         } else {
-          error(`This Farm Event does not appear to have a valid run time.
-            Perhaps you entered bad dates?`);
+          error(t(Content.INVALID_RUN_TIME));
         }
       })
       .catch(() => {
-        error("Unable to save farm event.");
+        error(t("Unable to save farm event."));
         this.setState({ specialStatusLocal: SpecialStatus.DIRTY });
       });
   }
@@ -207,9 +204,9 @@ export class EditFEForm extends React.Component<EditFEProps, State> {
   }
 
   render() {
-    let fe = this.props.farmEvent;
-    let repeats = this.fieldGet("timeUnit") !== NEVER;
-    let allowRepeat = (!this.isReg && repeats);
+    const fe = this.props.farmEvent;
+    const repeats = this.fieldGet("timeUnit") !== NEVER;
+    const allowRepeat = (!this.isReg && repeats);
     return (
       <div className="panel-container magenta-panel add-farm-event-panel">
         <div className="panel-header magenta-panel">
@@ -267,7 +264,7 @@ export class EditFEForm extends React.Component<EditFEProps, State> {
             onClick={() => {
               this.dispatch(destroy(fe.uuid)).then(() => {
                 history.push("/app/designer/farm_events");
-                success("Deleted farm event.", "Deleted");
+                success(t("Deleted farm event."), t("Deleted"));
               });
             }}>
             {t("Delete")}

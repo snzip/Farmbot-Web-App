@@ -39,6 +39,11 @@ module Api
 
     private
 
+    # HISTORICAL CONTEXT:
+    # Originally, Points, Tools and Plants were all independantly created as
+    # separate tables. As time progressed, we were able to merge them into a
+    # unified "points" table and use polymorphic associations to iron out the
+    # minor differences.
     def pointer_klass
       case raw_json&.dig(:pointer_type)
         when "GenericPointer" then Points
@@ -53,7 +58,7 @@ module Api
     end
 
     def points
-      Point.where(device_params)
+      Point.includes(:pointer).where(device_params)
     end
 
     def device_params

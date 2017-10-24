@@ -1,7 +1,16 @@
 require 'spec_helper'
 
+BIG_WARNING = <<~HEREDOC
+  MAYBE A WARNING:
+  YOU HAVE CHOSEN TO SKIP TESTS FOR USER VERIFICATION.
+  If you are a self hosted user that does not want email functionality,
+  you can ignore this message.
+  If you *do* want to use email in your farmbot setup, consider this a
+  failure.
+HEREDOC
+
 describe Api::UsersController do
-  let(:user) { FactoryGirl.create(:user) }
+  let(:user) { FactoryBot.create(:user) }
   include Devise::Test::ControllerHelpers
     it 'errors if you try to delete with the wrong password' do
       sign_in user
@@ -28,7 +37,9 @@ describe Api::UsersController do
       patch :update, params: input
       expect(response.status).to eq(200)
       expect(json[:name]).to eq("Ricky McRickerson")
-      expect(json[:email]).to eq("rick@rick.com")
+      # Updates to user email require confirmation.
+      expect(json[:email]).not_to eq(input[:email])
+      expect(json[:email]).to eq(user.email)
     end
 
     it 'updates password' do
@@ -84,31 +95,29 @@ describe Api::UsersController do
                   email:                 email,
                   name:                  "Frank" }
       old_email_count = ActionMailer::Base.deliveries.length
-      post :create, params: params
-      user = User.last
-      if User::SKIP_EMAIL_VALIDATION
-        puts <<~HEREDOC
-
-          MAYBE A WARNING:
-          YOU HAVE CHOSEN TO SKIP TESTS FOR USER VERIFICATION.
-
-          If you are a self hosted user that does not want email functionality,
-          you can ignore this message.
-
-          If you *do* want to use email in your farmbot setup, consider this a
-          failure.
-
-        HEREDOC
-      else
-        expect(ActionMailer::Base.deliveries.length).to be > old_email_count
-        msg = ActionMailer::Base.deliveries.last
-        expect(msg.to.first).to eq(email)
-        expect(msg.body.parts.first.to_s).to include(user.verification_token)
-        expect(User.count).to eq(original_count + 1)
-        expect(user.name).to eq("Frank")
-        expect(user.email).to eq(email)
-        expect(user.valid_password?('Password123')).to be_truthy
+      run_jobs_now do
+        post :create, params: params
+        user = User.last
+        if User::SKIP_EMAIL_VALIDATION
+          puts BIG_WARNING
+        else
+          expect(ActionMailer::Base.deliveries.length).to be > old_email_count
+          msg = ActionMailer::Base.deliveries.last
+          expect(msg.to.first).to eq(email)
+          expect(msg.body.parts.first.to_s).to include(user.confirmation_token)
+          expect(User.count).to eq(original_count + 1)
+          expect(user.name).to eq("Frank")
+          expect(user.email).to eq(email)
+          expect(user.valid_password?('Password123')).to be_truthy
+        end
       end
+    end
+
+    it 'can not re-verify' do
+      user.update_attributes(confirmed_at: Time.now)
+      sign_in user
+      put :verify, params: { token: user.confirmation_token }, format: :json
+      expect(response.status).to eq(409)
     end
 
     it 'handles password confirmation mismatch' do
@@ -122,5 +131,36 @@ describe Api::UsersController do
       expect(User.count > original_count).to be_falsy
       expect(json[:password]).to include("do not match")
       expect(response.status).to eq(422)
+    end
+
+    it 'refuses to send token to a user if they are already verified' do
+      verified = User.create!(email:                 Faker::Internet.email,
+                              password:              "password123",
+                              password_confirmation: "password123",
+                              confirmed_at:           Time.now)
+
+      post :resend_verification,
+           params: { email: verified.email },
+           format: :json
+
+      expect(response.status).to eq(422)
+      expect(json[:user])
+        .to include(Users::ResendVerification::ALREADY_VERIFIED)
+    end
+    unless ENV["NO_EMAILS"]
+      it 're-sends verification email' do
+        unverified = User.create!(email:                 Faker::Internet.email,
+                                  password:              "password123",
+                                  password_confirmation: "password123")
+
+        post :resend_verification,
+            params: { email: unverified.email },
+            format: :json
+
+        expect(response.status).to eq(200)
+        expect(json[:user]).to include(Users::ResendVerification::SENT)
+      end
+    else
+      puts "Skipping test because NO_EMAILS was enabled."
     end
 end

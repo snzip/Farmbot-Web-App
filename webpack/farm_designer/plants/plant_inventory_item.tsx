@@ -23,45 +23,60 @@ export class PlantInventoryItem extends
   state: PlantInventoryItemState = { icon: "" };
 
   render() {
-    let plant = this.props.tpp.body;
-    let { tpp, dispatch } = this.props;
-    let plantId = (plant.id || "ERR_NO_PLANT_ID").toString();
+    const plant = this.props.tpp.body;
+    const { tpp, dispatch } = this.props;
+    const plantId = (plant.id || "ERR_NO_PLANT_ID").toString();
 
-    let toggle = () => {
-      let { icon } = this.state;
-      dispatch({ type: "TOGGLE_HOVERED_PLANT", payload: { plant: tpp, icon } });
+    const toggle = (action: "enter" | "leave") => {
+      switch (action) {
+        case "enter":
+          const { icon } = this.state;
+          dispatch({
+            type: "TOGGLE_HOVERED_PLANT", payload: {
+              plantUUID: tpp.uuid, icon
+            }
+          });
+          break;
+        case "leave":
+          dispatch({
+            type: "TOGGLE_HOVERED_PLANT", payload: {
+              plantUUID: undefined, icon: ""
+            }
+          });
+          break;
+      }
     };
 
-    let click = () => {
+    const click = () => {
       push("/app/designer/plants/" + plantId);
-      dispatch({ type: "SELECT_PLANT", payload: tpp.uuid });
+      dispatch({ type: "SELECT_PLANT", payload: [tpp.uuid] });
     };
 
     // See `cachedIcon` for more details on this.
-    let maybeGetCachedIcon = (e: IMGEvent) => {
-      let OFS = tpp.body.openfarm_slug;
-      let img = e.currentTarget;
+    const maybeGetCachedIcon = (e: IMGEvent) => {
+      const OFS = tpp.body.openfarm_slug;
+      const img = e.currentTarget;
       OFS && cachedCrop(OFS)
         .then((crop) => {
-          let i = svgToUrl(crop.svg_icon);
+          const i = svgToUrl(crop.svg_icon);
           i !== img.getAttribute("src") && img.setAttribute("src", i);
           this.setState({ icon: i });
         });
     };
 
     // Name given from OpenFarm's API.
-    let label = plant.name || "Unknown plant";
+    const label = plant.name || "Unknown plant";
 
     // Original planted date vs time now to determine age.
-    let plantedAt = plant.created_at || moment();
-    let currentDay = moment();
-    let daysOld = currentDay.diff(moment(plantedAt), "days") + 1;
+    const plantedAt = plant.created_at || moment();
+    const currentDay = moment();
+    const daysOld = currentDay.diff(moment(plantedAt), "days") + 1;
 
     return <div
       className="plant-search-item"
       key={plantId}
-      onMouseEnter={toggle}
-      onMouseLeave={toggle}
+      onMouseEnter={() => toggle("enter")}
+      onMouseLeave={() => toggle("leave")}
       onClick={click}>
       <img
         className="plant-search-item-image"

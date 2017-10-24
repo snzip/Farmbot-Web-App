@@ -1,7 +1,9 @@
 module Api
   class FarmEventsController < Api::AbstractController
+    include Skylight::Helpers
     before_action :clean_expired_farm_events, only: [:index]
 
+    instrument_method
     def index
       render json: current_device.farm_events
     end
@@ -30,6 +32,9 @@ module Api
       @farm_event ||= FarmEvent.find(params[:id])
     end
 
+    # Probably safe to remove this endpoint now. This is from the pre-launch era
+    # when we were still on Angular 1.0.
+    # TODO: Remove this dead code?
     def default_serializer_options
       # For some strange reason, angular-data crashes if we don't call super()
       # here. Rails doesn't care, though.

@@ -13,8 +13,9 @@ export namespace ToolTips {
     absolute movement. Tip: Press the Home button when you are done so FarmBot
     is ready to get back to work.`;
 
-  export const WEBCAM_SAVE =
-    `Press the edit button to update and save your webcam URL.`;
+  export const WEBCAM =
+    `If you have a webcam, you can view the video stream in this widget.
+    Press the edit button to update and save your webcam URL.`;
 
   export const PERIPHERALS =
     `Use these toggle switches to control FarmBot's peripherals in realtime. To
@@ -78,9 +79,12 @@ export namespace ToolTips {
   export const MAX_SPEED =
     `Maximum travel speed after acceleration in motor steps per second.`;
 
+  export const HOME_SPEED =
+    `Homing and calibration travel speed in motor steps per second.`;
+
   export const MIN_SPEED =
-    `Minimum movement speed. Also used for homing, calibration, and movements
-    across home.`;
+    `Minimum movement speed in motor steps per second. Also used for homing
+     and calibration.`;
 
   export const ACCELERATE_FOR =
     `Number of steps used for acceleration and deceleration.`;
@@ -255,9 +259,13 @@ export namespace Content {
     your FarmBot so that is goes back into configuration mode for pairing with
     another user account. When this happens, all of the data on your FarmBot
     will be overwritten with the new account's data. If the account is brand
-    new, then FarmBot will become a blank slate.`;
+    new, then FarmBot will become a blank slate.`.replace(/\s+/g, " ");
 
-  // Controls
+  export const TYPE_PASSWORD_TO_DELETE =
+    `If you are sure you want to delete your account, type in
+    your password below to continue.`.replace(/\s+/g, " ");
+
+  // Device
   export const FACTORY_RESET_WARNING =
     `Factory resetting your FarmBot will destroy all data on the device,
     revoking your FarmBot's abilily to connect to your web app account and your
@@ -265,14 +273,93 @@ export namespace Content {
     Configurator mode. Factory resetting your FarmBot will not affect any data
     or settings from your web app account, allowing you to do a complete restore
     to your device once it is back online and paired with your web app
-    account.`;
+    account.`.replace(/\s+/g, " ");
 
-  // Experimental Warning
+  export const FACTORY_RESET_ALERT =
+    `Warning: This will erase all data stored on your FarmBot's SD card,
+    requiring you to reconfigure FarmBot so that it can reconnect to your
+    WiFi network and a web app account. Factory resetting the device will
+    not delete data stored in your web app account. Are you sure you wish
+    to continue?`.replace(/\s+/g, " ");
+
+  export const TIMEZONE_GUESS_BROWSER =
+    `This account did not have a timezone set. Farmbot requires a timezone to
+    operate. We have updated your timezone settings based on your browser.
+    Please verify these settings in the device settings panel. Device sync is
+    recommended.`.replace(/\s+/g, " ");
+
+  export const TIMEZONE_GUESS_UTC =
+    `Warning: Farmbot could not guess your timezone. We have defaulted your
+    timezone to UTC, which is less than ideal for most users. Please select
+    your timezone from the dropdown. Device sync is recommended.`.replace(/\s+/g, " ");
+
+  export const DIFFERENT_TZ_WARNING =
+    `Note: The selected timezone for your FarmBot is different than
+    your local browser time.`.replace(/\s+/g, " ");
+
+  export const RESTART_FARMBOT =
+    `This will restart FarmBot's Raspberry Pi and controller
+    software.`.replace(/\s+/g, " ");
+
+  export const SHUTDOWN_FARMBOT =
+    `This will shutdown FarmBot's Raspberry Pi. To turn it
+    back on, unplug FarmBot and plug it back in.`.replace(/\s+/g, " ");
+
+  // Hardware Settings
+  export const RESTORE_DEFAULT_HARDWARE_SETTINGS =
+    `Restoring hardware parameter defaults will destroy the
+    current settings, resetting them to default values.`.replace(/\s+/g, " ");
+
+  // App
+  export const APP_LOAD_TIMEOUT_MESSAGE =
+    `App could not be fully loaded, we recommend you try
+    refreshing the page.`.replace(/\s+/g, " ");
+
+  export const MQTT_DISCONNECTED =
+    `Your web browser is unable to connect to the message broker.
+    You might be behind a firewall or disconnected from the Internet. Check
+    your network settings.
+    View Device > Connectivity for more details.`.replace(/\s+/g, " ");
+
+  export const MALFORMED_MESSAGE_REC_UPGRADE =
+    `FarmBot sent a malformed message. You may need to upgrade
+    FarmBot OS. Please upgrade FarmBot OS and log back in.`.replace(/\s+/g, " ");
+
   export const EXPERIMENTAL_WARNING =
     `Warning! This is an EXPERIMENTAL feature. This feature may be broken and may
     break or otherwise hinder your usage of the rest of the app. This feature may
-    disappear or break at any time.`;
+    disappear or break at any time.`.replace(/\s+/g, " ");
 
+  // Front Page
+  export const TOS_UPDATE =
+    `The terms of service have recently changed. You must accept the new
+    terms of service to continue using the site.`.replace(/\s+/g, " ");
+
+  // Sequences
+  export const NO_SEQUENCE_SELECTED =
+    `No Sequence selected. Click one in the Sequences panel to edit, or
+    click "+" to create a new one.`.replace(/\s+/g, " ");
+
+  // Regimens
+  export const NO_REGIMEN_SELECTED =
+    `No Regimen selected. Click one in the Regimens panel to edit, or
+    click "+" in the Regimens panel to create a new one.`.replace(/\s+/g, " ");
+
+  // Farm Events
+  export const REGIMEN_TODAY_SKIPPED_ITEM_RISK =
+    `You are scheduling a regimen to run today. Be aware that
+    running a regimen too late in the day may result in skipped
+    regimen tasks. Consider rescheduling this event to tomorrow if
+    this is a concern.`.replace(/\s+/g, " ");
+
+  export const INVALID_RUN_TIME =
+    `This Farm Event does not appear to have a valid run time.
+    Perhaps you entered bad dates?`.replace(/\s+/g, " ");
+
+  export const FARM_EVENT_TZ_WARNING =
+    `Note: Times displayed according to local browser time, which
+    is currently different from your device timezone setting (on the
+    Device page).`.replace(/\s+/g, " ");
 }
 
 export enum Actions {
@@ -288,9 +375,12 @@ export enum Actions {
   SAVE_RESOURCE_START = "SAVE_RESOURCE_START",
   RESOURCE_READY = "RESOURCE_READY",
   _RESOURCE_NO = "*_RESOURCE_NO",
+  REFRESH_RESOURCE_START = "REFRESH_RESOURCE_START",
+  REFRESH_RESOURCE_OK = "REFRESH_RESOURCE_OK",
+  REFRESH_RESOURCE_NO = "REFRESH_RESOURCE_NO",
 
   // Auth
-  LOGIN_OK = "LOGIN_OK",
+  REPLACE_TOKEN = "LOGIN_OK",
 
   // Config
   CHANGE_API_PORT = "CHANGE_API_PORT",
@@ -299,7 +389,7 @@ export enum Actions {
 
   // Devices
   TOGGLE_CONTROL_PANEL_OPTION = "TOGGLE_CONTROL_PANEL_OPTION",
-  SET_MQTT_STATUS = "TOGGLE_MQTT",
+  BULK_TOGGLE_CONTROL_PANEL = "BULK_TOGGLE_CONTROL_PANEL",
   CHANGE_STEP_SIZE = "CHANGE_STEP_SIZE",
   SETTING_UPDATE_START = "SETTING_UPDATE_START",
   SETTING_UPDATE_END = "SETTING_UPDATE_END",
@@ -318,8 +408,6 @@ export enum Actions {
   SEARCH_QUERY_CHANGE = "SEARCH_QUERY_CHANGE",
   SELECT_PLANT = "SELECT_PLANT",
   TOGGLE_HOVERED_PLANT = "TOGGLE_HOVERED_PLANT",
-  UPDATE_BOT_ORIGIN_QUADRANT = "UPDATE_BOT_ORIGIN_QUADRANT",
-  UPDATE_MAP_ZOOM_LEVEL = "UPDATE_MAP_ZOOM_LEVEL",
   OF_SEARCH_RESULTS_OK = "OF_SEARCH_RESULTS_OK",
 
   // Regimens
@@ -338,4 +426,6 @@ export enum Actions {
   // Farmware
   SELECT_IMAGE = "SELECT_IMAGE",
 
+  // Network
+  NETWORK_EDGE_CHANGE = "NETWORK_EDGE_CHANGE"
 }

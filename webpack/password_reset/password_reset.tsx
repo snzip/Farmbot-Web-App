@@ -6,6 +6,7 @@ import { prettyPrintApiErrors } from "../util";
 import { API } from "../api";
 import { State, Props } from "./interfaces";
 import { Widget, WidgetHeader, WidgetBody, Row, Col } from "../ui/index";
+import { Session } from "../session";
 
 export class PasswordReset extends React.Component<Props, State> {
   constructor() {
@@ -28,29 +29,29 @@ export class PasswordReset extends React.Component<Props, State> {
   }
 
   set = (name: string) => (event: React.FormEvent<HTMLInputElement>) => {
-    let state: { [name: string]: string } = {};
+    const state: { [name: string]: string } = {};
     state[name] = (event.currentTarget).value;
     this.setState(state);
   };
 
   submit(e: React.SyntheticEvent<HTMLInputElement>) {
     e.preventDefault();
-    let { password, passwordConfirmation } = this.state;
-    let token = window.location.href.split("/").pop();
+    const { password, passwordConfirmation } = this.state;
+    const token = window.location.href.split("/").pop();
     axios.put(API.current.passwordResetPath, {
       id: token,
       password,
       password_confirmation: passwordConfirmation,
-    }).then(() => {
-      window.location.href = "/";
-    }).catch((error: string) => {
-      log(prettyPrintApiErrors(error as {}));
-    });
+    })
+      .then(Session.clear)
+      .catch((error: string) => {
+        log(prettyPrintApiErrors(error as {}));
+      });
   }
 
   render() {
 
-    let buttonStylesUniqueToOnlyThisPage = {
+    const buttonStylesUniqueToOnlyThisPage = {
       marginTop: "1rem",
       padding: ".5rem 1.6rem",
       fontSize: "1.2rem",

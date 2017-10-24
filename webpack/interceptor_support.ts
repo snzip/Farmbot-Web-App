@@ -1,5 +1,5 @@
 import { ResourceName, DataChangeType, Dictionary } from "farmbot/dist";
-import { devices } from "./device";
+import { getDevice } from "./device";
 import { box } from "boxed_value";
 import * as _ from "lodash";
 
@@ -11,7 +11,7 @@ export let METHOD_MAP: Dictionary<DataChangeType> = {
 };
 export let METHODS = ["post", "put", "patch", "delete"];
 export let RESOURCES: ResourceName[] = [
-  "images", "plants", "regimens", "peripherals", "logs", "sequences",
+  "plants", "regimens", "peripherals", "logs", "sequences",
   "farm_events", "tool_slots", "tools", "points", "device"];
 
 // PROBLEM:       The bot doesn't know if the user has changed any of the data.
@@ -23,7 +23,7 @@ export function notifyBotOfChanges(url: string | undefined, action: DataChangeTy
     url.split("/").filter((chunk: ResourceName) => {
       return RESOURCES.includes(chunk);
     }).map(async function (resource: ResourceName) {
-      devices.current.dataUpdate(action, { [resource]: inferUpdateId(url) });
+      getDevice().dataUpdate(action, { [resource]: inferUpdateId(url) });
     });
   }
 }

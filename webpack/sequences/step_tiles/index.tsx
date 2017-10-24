@@ -18,6 +18,9 @@ import { CeleryNode, LegalSequenceKind, LegalArgString, If, Execute, Nothing } f
 import { TaggedSequence } from "../../resources/tagged_resources";
 import { overwrite } from "../../api/crud";
 import { TileFindHome } from "./tile_find_home";
+import { t } from "i18next";
+import { Session } from "../../session";
+import { BooleanSetting } from "../../session_keys";
 
 interface MoveParams {
   step: Step;
@@ -27,9 +30,9 @@ interface MoveParams {
 }
 
 export function move({ step, sequence, to, from }: MoveParams) {
-  let copy = defensiveClone(step);
-  let next = defensiveClone(sequence);
-  let seq = next.body;
+  const copy = defensiveClone(step);
+  const next = defensiveClone(sequence);
+  const seq = next.body;
   seq.body = seq.body || [];
   if (from > to) {
     seq.body = arrayMover(seq.body, from, to);
@@ -48,9 +51,9 @@ interface CopyParams {
 }
 
 export function splice({ step, sequence, index }: CopyParams) {
-  let copy = defensiveClone(step);
-  let next = defensiveClone(sequence);
-  let seq = next.body;
+  const copy = defensiveClone(step);
+  const next = defensiveClone(sequence);
+  const seq = next.body;
   seq.body = seq.body || [];
   seq.body.splice(index, 0, copy);
   return overwrite(sequence, next.body);
@@ -63,21 +66,24 @@ interface RemoveParams {
 }
 
 export function remove({ dispatch, index, sequence }: RemoveParams) {
-  let original = sequence;
-  let update = defensiveClone(original);
-  update.body.body = (update.body.body || []);
-  delete update.body.body[index];
-  update.body.body = _.compact(update.body.body);
-  dispatch(overwrite(original, update.body));
+  if (!Session.getBool(BooleanSetting.confirmStepDeletion) ||
+    confirm(t("Are you sure you want to delete this step?"))) {
+    const original = sequence;
+    const update = defensiveClone(original);
+    update.body.body = (update.body.body || []);
+    delete update.body.body[index];
+    update.body.body = _.compact(update.body.body);
+    dispatch(overwrite(original, update.body));
+  }
 }
 
 export function updateStep(props: StepInputProps) {
   return (e: React.FormEvent<HTMLInputElement>) => {
-    let { dispatch, step, index, sequence, field } = props;
-    let stepCopy = defensiveClone(step);
-    let seqCopy = defensiveClone(sequence).body;
-    let val = e.currentTarget.value;
-    let isNumeric = NUMERIC_FIELDS.includes(field);
+    const { dispatch, step, index, sequence, field } = props;
+    const stepCopy = defensiveClone(step);
+    const seqCopy = defensiveClone(sequence).body;
+    const val = e.currentTarget.value;
+    const isNumeric = NUMERIC_FIELDS.includes(field);
     seqCopy.body = seqCopy.body || [];
 
     if (isNumeric) {
@@ -93,10 +99,10 @@ export function updateStep(props: StepInputProps) {
 
 export function updateStepTitle(props: StepTitleBarProps) {
   return (e: React.FormEvent<HTMLInputElement>) => {
-    let { dispatch, step, index, sequence } = props;
-    let stepCopy = defensiveClone(step);
-    let seqCopy = defensiveClone(sequence).body;
-    let val = e.currentTarget.value;
+    const { dispatch, step, index, sequence } = props;
+    const stepCopy = defensiveClone(step);
+    const seqCopy = defensiveClone(sequence).body;
+    const val = e.currentTarget.value;
     seqCopy.body = seqCopy.body || [];
     if (val == "") {
       delete stepCopy.comment;
@@ -110,7 +116,7 @@ export function updateStepTitle(props: StepTitleBarProps) {
 
 function numericNonsense(val: string, copy: CeleryNode, field: LegalArgString) {
   // Fix negative number issues.
-  let num = (val == "-") ? "-" : parseInt(val, 10);
+  const num = (val == "-") ? "-" : parseInt(val, 10);
   return _.assign(copy.args, { [field]: num });
 }
 
@@ -131,7 +137,7 @@ export function renderCeleryNode(kind: LegalSequenceKind, props: StepParams) {
   }
 }
 
-let checkBranch = (branch: Execute | Nothing,
+const checkBranch = (branch: Execute | Nothing,
   step: If,
   sequence: TaggedSequence) => {
   return (branch.kind === "execute")

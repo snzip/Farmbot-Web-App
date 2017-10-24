@@ -9,12 +9,14 @@ import { envSave } from "../weed_detector/remote_env/actions";
 import { WDENVKey } from "../weed_detector/remote_env/interfaces";
 import { selectImage } from "../images/actions";
 import { calibrate, scanImage } from "./actions";
+import { envGet } from "../weed_detector/remote_env/selectors";
 
 export class CameraCalibration extends
   React.Component<CameraCalibrationProps, CameraCalibrationState> {
   render() {
+    const classname = "weed-detector-widget";
     return (
-      <Widget className="weed-detector-widget coming-soon">
+      <Widget className={classname}>
         <TitleBar
           title={"Camera Calibration"}
           help={t(ToolTips.CAMERA_CALIBRATION)}
@@ -29,7 +31,7 @@ export class CameraCalibration extends
                 images={this.props.images}
                 currentImage={this.props.currentImage}
                 onChange={(key, value) => {
-                  let MAPPING: Record<typeof key, WDENVKey> = {
+                  const MAPPING: Record<typeof key, WDENVKey> = {
                     "iteration": "CAMERA_CALIBRATION_iteration",
                     "morph": "CAMERA_CALIBRATION_morph",
                     "blur": "CAMERA_CALIBRATION_blur",
@@ -50,7 +52,10 @@ export class CameraCalibration extends
                 V_LO={this.props.V_LO}
                 H_HI={this.props.H_HI}
                 S_HI={this.props.S_HI}
-                V_HI={this.props.V_HI} />
+                V_HI={this.props.V_HI}
+                invertHue={!!envGet(
+                  "CAMERA_CALIBRATION_invert_hue_selection",
+                  this.props.env)} />
             </Col>
           </Row>
         </WidgetBody>

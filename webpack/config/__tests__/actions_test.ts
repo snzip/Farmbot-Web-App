@@ -1,17 +1,45 @@
-jest.unmock("../../auth/actions");
-const actions = require("../../auth/actions");
-let didLogin = jest.fn();
-jest.mock("../../session", () => ({ Session: { get: () => false } }));
-actions.didLogin = didLogin;
-import { ready } from "../actions";
+const mockState = {
+  auth: {
+    token: {
+      unencoded: { iss: "http://geocities.com" }
+    }
+  }
+};
 
-const STUB_STATE = { auth: "FOO BAR BAZ" };
+jest.mock("axios", () => ({
+  default: {
+    interceptors: {
+      response: { use: jest.fn() },
+      request: { use: jest.fn() }
+    },
+    get() { return Promise.resolve({ data: mockState }); }
+  }
+}));
+
+jest.mock("../../session", () => ({
+  Session: {
+    fetchStoredToken: jest.fn(),
+    getNum: () => undefined,
+    getBool: () => undefined,
+    getAll: () => undefined
+  }
+}));
+
+jest.mock("../../auth/actions", () => ({
+  didLogin: jest.fn(),
+  setToken: jest.fn()
+}));
+
+import { ready } from "../actions";
+import { setToken } from "../../auth/actions";
+
 describe("Actions", () => {
-  it("fetches configs and calls didLogin()", () => {
-    let dispatch = jest.fn();
-    let getState = jest.fn(() => STUB_STATE);
-    let thunk = ready();
+  it("calls didLogin()", () => {
+    jest.resetAllMocks();
+    const dispatch = jest.fn();
+    const getState = jest.fn(() => mockState);
+    const thunk = ready();
     thunk(dispatch, getState);
-    expect(didLogin.mock.calls.length).toBe(1);
+    expect(setToken).toHaveBeenCalled();
   });
 });

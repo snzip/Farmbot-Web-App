@@ -1,8 +1,10 @@
 import {
   TaggedPlantPointer,
-  TaggedCrop
+  TaggedCrop,
+  TaggedGenericPointer
 } from "../../resources/tagged_resources";
 import { State, BotOriginQuadrant } from "../interfaces";
+import { BotPosition, BotLocationData } from "../../devices/interfaces";
 
 export interface PlantLayerProps {
   plants: TaggedPlantPointer[];
@@ -12,7 +14,9 @@ export interface PlantLayerProps {
   visible: boolean;
   crops: TaggedCrop[];
   dispatch: Function;
-  botOriginQuadrant: BotOriginQuadrant;
+  mapTransformProps: MapTransformProps;
+  zoomLvl: number;
+  activeDragXY: BotPosition | undefined;
 }
 
 export interface CropSpreadDict {
@@ -30,4 +34,77 @@ export interface GardenMapLegendProps {
   showPoints: boolean;
   showSpread: boolean;
   showFarmbot: boolean;
+}
+
+export type MapTransformProps = {
+  quadrant: BotOriginQuadrant,
+  gridSize: AxisNumberProperty
+};
+
+export interface GardenPlantProps {
+  mapTransformProps: MapTransformProps;
+  dispatch: Function;
+  plant: Readonly<TaggedPlantPointer>;
+  selected: boolean;
+  dragging: boolean;
+  zoomLvl: number;
+  activeDragXY: BotPosition | undefined;
+  uuid: string;
+}
+
+export interface GardenPlantState {
+  icon: string;
+}
+
+export interface GardenPointProps {
+  mapTransformProps: MapTransformProps;
+  point: TaggedGenericPointer;
+}
+
+export interface DragHelpersProps {
+  dragging: boolean;
+  plant: Readonly<TaggedPlantPointer>;
+  mapTransformProps: MapTransformProps;
+  zoomLvl: number;
+  activeDragXY: BotPosition | undefined;
+  plantAreaOffset: AxisNumberProperty;
+}
+
+export type AxisNumberProperty = Record<"x" | "y", number>;
+export type CheckedAxisLength = { value: number, isDefault: boolean };
+export type BotSize = Record<"x" | "y", CheckedAxisLength>;
+
+export interface BotExtentsProps {
+  mapTransformProps: MapTransformProps;
+  stopAtHome: Record<"x" | "y", boolean>;
+  botSize: BotSize;
+}
+
+export interface MapBackgroundProps {
+  mapTransformProps: MapTransformProps;
+  plantAreaOffset: AxisNumberProperty;
+}
+
+export interface GridProps {
+  mapTransformProps: MapTransformProps;
+  dispatch: Function;
+}
+
+export interface VirtualFarmBotProps {
+  mapTransformProps: MapTransformProps;
+  botLocationData: BotLocationData;
+  plantAreaOffset: AxisNumberProperty;
+}
+
+export interface FarmBotLayerProps extends VirtualFarmBotProps, BotExtentsProps {
+  visible: boolean;
+}
+
+export interface SpreadOverlapHelperProps {
+  dragging: boolean;
+  plant: Readonly<TaggedPlantPointer>;
+  mapTransformProps: MapTransformProps;
+  zoomLvl: number;
+  activeDragXY: BotPosition | undefined;
+  activeDragSpread: number | undefined;
 }

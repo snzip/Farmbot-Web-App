@@ -1,7 +1,7 @@
 import axios from "axios";
 import { t } from "i18next";
 import { error, success } from "farmbot-toastr";
-import { connectDevice, fetchReleases } from "../devices/actions";
+import { fetchReleases } from "../devices/actions";
 import { push } from "../history";
 import { AuthState } from "./interfaces";
 import { ReduxAction, Thunk } from "../redux/interfaces";
@@ -16,21 +16,21 @@ import {
   requestFulfilled
 } from "../interceptors";
 import { Actions } from "../constants";
+import { connectDevice } from "../connectivity/connect_device";
 
 export function didLogin(authState: AuthState, dispatch: Function) {
   API.setBaseUrl(authState.token.unencoded.iss);
   dispatch(fetchReleases(authState.token.unencoded.os_update_server));
-  dispatch(loginOk(authState));
-
+  dispatch(setToken(authState));
   Sync.fetchSyncData(dispatch);
-  dispatch(connectDevice(authState.token.encoded));
+  dispatch(connectDevice(authState));
 }
 
 // We need to handle OK logins for numerous use cases (Ex: login & registration)
 function onLogin(dispatch: Function) {
   return (response: HttpData<AuthState>) => {
-    let { data } = response;
-    Session.put(data);
+    const { data } = response;
+    Session.replaceToken(data);
     didLogin(data, dispatch);
     push("/app/controls");
   };
@@ -53,12 +53,12 @@ function loginErr() {
 /** Very important. Once called, all outbound HTTP requests will
  * have a JSON Web Token attached to their "Authorization" header,
  * thereby granting access to the API. */
-export function loginOk(auth: AuthState): ReduxAction<AuthState> {
+export function setToken(auth: AuthState): ReduxAction<AuthState> {
   axios.interceptors.response.use(responseFulfilled, responseRejected);
   axios.interceptors.request.use(requestFulfilled(auth));
 
   return {
-    type: Actions.LOGIN_OK,
+    type: Actions.REPLACE_TOKEN,
     payload: auth
   };
 }
@@ -70,50 +70,32 @@ export function register(name: string,
   confirmation: string,
   url: string): Thunk {
   return dispatch => {
-    let p = requestRegistration(name,
-      email,
-      password,
-      confirmation,
-      url);
-    return p.then(onLogin(dispatch),
-      onRegistrationErr(dispatch));
+    return requestRegistration(name, email, password, confirmation)
+      .then(onLogin(dispatch), onRegistrationErr(dispatch));
   };
 }
 
 /** Handle user registration errors. */
 export function onRegistrationErr(dispatch: Function) {
-  return (err: UnsafeError) => {
-    toastErrors(err);
-    dispatch({
-      type: "REGISTRATION_ERROR",
-      payload: err
-    });
-  };
+  return (err: UnsafeError) => toastErrors(err);
 }
 
 /** Build a JSON object in preparation for an HTTP POST
  *  to registration endpoint */
-function requestRegistration(name: string,
+export function requestRegistration(name: string,
   email: string,
   password: string,
-  confirmation: string,
-  url: string) {
-  let form = {
-    user: {
-      email: email,
-      password: password,
-      password_confirmation: confirmation,
-      name: name
-    }
-  };
+  password_confirmation: string) {
+
+  const form = { user: { email, password, password_confirmation, name } };
   return axios.post(API.current.usersPath, form);
 }
 
 /** Fetch API token if already registered. */
-function requestToken(email: string,
+export function requestToken(email: string,
   password: string,
   url: string) {
-  let payload = { user: { email: email, password: password } };
+  const payload = { user: { email: email, password: password } };
   // Set the base URL once here.
   // It will get set once more when we get the "iss" claim from the JWT.
   API.setBaseUrl(url);
@@ -126,11 +108,14 @@ export function logout() {
   // In those cases, seeing a logout message may confuse the user.
   // To circumvent this, we must check if the user had a token.
   // If there was infact a token, we can safely show the message.
-  if (Session.get()) { success("You have been logged out."); }
-  Session.clear(true);
+  if (Session.fetchStoredToken()) {
+    success(t("You have been logged out."));
+  }
+
+  Session.clear();
   // Technically this is unreachable code:
   return {
-    type: "LOGOUT",
+    type: Actions.LOGOUT,
     payload: {}
   };
 }

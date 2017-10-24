@@ -1,19 +1,20 @@
 import * as React from "react";
-import { VirtualFarmBot } from "../farmbot_position_point";
-import { BotOriginQuadrant } from "../../interfaces";
-import { BotPosition } from "../../../devices/interfaces";
-
-export interface FarmBotLayerProps {
-  visible: boolean;
-  botOriginQuadrant: BotOriginQuadrant;
-  botPosition: BotPosition;
-}
+import { VirtualFarmBot } from "../virtual_farmbot";
+import { BotExtents } from "../bot_extents";
+import { FarmBotLayerProps } from "../interfaces";
 
 export function FarmBotLayer(props: FarmBotLayerProps) {
-  let { visible, botOriginQuadrant } = props;
-  return visible ? <g>
+  const {
+    visible, stopAtHome, botSize, plantAreaOffset, mapTransformProps
+   } = props;
+  return visible ? <g id="farmbot-layer">
     <VirtualFarmBot
-      quadrant={botOriginQuadrant}
-      botPosition={props.botPosition} />
-  </g> : <g />; // fallback
+      mapTransformProps={mapTransformProps}
+      botLocationData={props.botLocationData}
+      plantAreaOffset={plantAreaOffset} />
+    <BotExtents
+      mapTransformProps={mapTransformProps}
+      stopAtHome={stopAtHome}
+      botSize={botSize} />
+  </g> : <g id="farmbot-layer" />;
 }

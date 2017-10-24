@@ -1,32 +1,27 @@
-import * as React from "react";
+import * as React from "react";
+import { t } from "i18next";
 import { connect } from "react-redux";
 import * as _ from "lodash";
 import { init, error } from "farmbot-toastr";
 
 import { NavBar } from "./nav";
 import { Everything, Log } from "./interfaces";
-import { Spinner } from "./spinner";
+import { LoadingPlant } from "./loading_plant";
 import { BotState } from "./devices/interfaces";
 import { ResourceName, TaggedUser } from "./resources/tagged_resources";
 import { selectAllLogs, maybeFetchUser } from "./resources/selectors";
 import { HotKeys } from "./hotkeys";
 import { ControlsPopup } from "./controls_popup";
+import { Content } from "./constants";
 
-/** Remove 300ms delay on touch devices - https://github.com/ftlabs/fastclick */
-let fastClick = require("fastclick");
+/** Remove 300ms delay on touch devices - https://github.com/ftlabs/fastclick */
+const fastClick = require("fastclick");
 fastClick.attach(document.body);
 
-/** For the logger module */
+/** For the logger module */
 init();
 
-/**
- * If the sync object takes more than 10s to load, the user will be granted
- * access into the app, but still warned.
- */
-const TIMEOUT_MESSAGE = `App could not be fully loaded, we recommend you try
- refreshing the page.`;
-
-interface AppProps {
+export interface AppProps {
   dispatch: Function;
   loaded: ResourceName[];
   logs: Log[];
@@ -47,6 +42,8 @@ function mapStateToProps(props: Everything): AppProps {
     loaded: props.resources.loaded
   };
 }
+/** Time at which the app gives up and asks the user to refresh */
+const LOAD_TIME_FAILURE_MS = 25000;
 
 /**
  * Relational resources that *must* load before app starts.
@@ -60,23 +57,28 @@ const MUST_LOAD: ResourceName[] = [
 ];
 
 @connect(mapStateToProps)
-export default class App extends React.Component<AppProps, {}> {
+export class App extends React.Component<AppProps, {}> {
 
   get isLoaded() {
     return (MUST_LOAD.length ===
       _.intersection(this.props.loaded, MUST_LOAD).length);
   }
 
+  /**
+ * If the sync object takes more than 10s to load, the user will be granted
+ * access into the app, but still warned.
+ */
   componentDidMount() {
     setTimeout(() => {
       if (!this.isLoaded) {
-        error(TIMEOUT_MESSAGE, "Warning");
+        error(t(Content.APP_LOAD_TIMEOUT_MESSAGE), t("Warning"));
       }
-    }, 10000);
+    }, LOAD_TIME_FAILURE_MS);
   }
 
   render() {
-    let syncLoaded = this.isLoaded;
+    const syncLoaded = this.isLoaded;
+    const currentPath = window.location.pathname;
     return <div className="app">
       <HotKeys dispatch={this.props.dispatch} />
       <NavBar
@@ -84,9 +86,14 @@ export default class App extends React.Component<AppProps, {}> {
         bot={this.props.bot}
         dispatch={this.props.dispatch}
         logs={this.props.logs} />
-      {!syncLoaded && <Spinner radius={33} strokeWidth={6} />}
+      {!syncLoaded && <LoadingPlant />}
       {syncLoaded && this.props.children}
-      <ControlsPopup dispatch={this.props.dispatch} />
+      {!currentPath.startsWith("/app/controls") &&
+        !currentPath.startsWith("/app/account") &&
+        !currentPath.startsWith("/app/regimens") &&
+        <ControlsPopup
+          dispatch={this.props.dispatch}
+          axisInversion={this.props.bot.axis_inversion} />}
     </div>;
   }
 }

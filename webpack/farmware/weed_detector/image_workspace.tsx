@@ -37,10 +37,11 @@ interface Props extends NumericValues {
   currentImage: TaggedImage | undefined;
   images: TaggedImage[];
   onChange(key: NumericKeyName, value: number): void;
+  invertHue?: boolean;
 }
 
 /** Mapping of HSV values to FBOS Env variables. */
-let CHANGE_MAP: Record<HSV, [NumericKeyName, NumericKeyName]> = {
+const CHANGE_MAP: Record<HSV, [NumericKeyName, NumericKeyName]> = {
   H: ["H_LO", "H_HI"],
   S: ["S_LO", "S_HI"],
   V: ["V_LO", "V_HI"]
@@ -54,7 +55,7 @@ export class ImageWorkspace extends React.Component<Props, {}> {
     };
 
   maybeProcessPhoto = () => {
-    let img = this.props.currentImage || this.props.images[0];
+    const img = this.props.currentImage || this.props.images[0];
     if (img && img.body.id) {
       this.props.onProcessPhoto(img.body.id);
     }
@@ -64,12 +65,12 @@ export class ImageWorkspace extends React.Component<Props, {}> {
    * for (H|S|L)_LO */
   onHslChange = (key: keyof typeof CHANGE_MAP) =>
     (values: [number, number]) => {
-      let keys = CHANGE_MAP[key];
+      const keys = CHANGE_MAP[key];
       [0, 1].map(i => this.props.onChange(keys[i], values[i]));
     };
 
   render() {
-    let { H_LO, H_HI, S_LO, S_HI, V_LO, V_HI } = this.props;
+    const { H_LO, H_HI, S_LO, S_HI, V_LO, V_HI } = this.props;
 
     return (
       <div className="widget-content">
@@ -83,8 +84,8 @@ export class ImageWorkspace extends React.Component<Props, {}> {
               onRelease={this.onHslChange("H")}
               lowest={RANGES.H.LOWEST}
               highest={RANGES.H.HIGHEST}
-              lowValue={H_LO}
-              highValue={H_HI} />
+              lowValue={Math.min(H_LO, H_HI)}
+              highValue={Math.max(H_LO, H_HI)} />
             <label htmlFor="saturation">{t("SATURATION")}</label>
             <WeedDetectorSlider
               onRelease={this.onHslChange("S")}
@@ -104,7 +105,8 @@ export class ImageWorkspace extends React.Component<Props, {}> {
             <FarmbotColorPicker
               h={[H_LO, H_HI]}
               s={[S_LO, S_HI]}
-              v={[V_LO, V_HI]} />
+              v={[V_LO, V_HI]}
+              invertHue={this.props.invertHue} />
           </Col>
         </Row>
         <Row>

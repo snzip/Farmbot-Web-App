@@ -7,10 +7,9 @@ module Auth
     def execute
       token  = SessionToken.decode!(just_the_token)
       claims = token.unencoded
-      email  = claims['sub']
-      User.find_by!(email: email)
-    rescue JWT::DecodeError
-      add_error :jwt, :decode_error, "JSON Web Token is not valid."
+      User.find_by_email_or_id(claims["sub"])
+    rescue JWT::DecodeError, ActiveRecord::RecordNotFound, User::BadSub
+      add_error :jwt, :decode_error, Auth::ReloadToken::BAD_SUB
     end
 
     def just_the_token

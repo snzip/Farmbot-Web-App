@@ -17,17 +17,17 @@ import { TestButton } from "./test_button";
 import { warning } from "farmbot-toastr";
 import { AllSteps } from "./all_steps";
 
-let onDrop =
+export const onDrop =
   (dispatch1: Function, sequence: TaggedSequence) =>
     (index: number, key: string) => {
       dispatch1(function (dispatch2: Function, getState: GetState) {
-        let dataXferObj = dispatch2(stepGet(key));
-        let step = dataXferObj.value;
+        const dataXferObj = dispatch2(stepGet(key));
+        const step = dataXferObj.value;
         switch (dataXferObj.intent) {
           case "step_splice":
             return dispatch2(splice({ step, sequence, index }));
           case "step_move":
-            let action =
+            const action =
               move({ step, sequence, to: index, from: dataXferObj.draggerId });
             return dispatch2(action);
           default:
@@ -36,7 +36,7 @@ let onDrop =
       });
     };
 
-let copy = function (dispatch: Function, sequence: TaggedSequence) {
+const copy = function (dispatch: Function, sequence: TaggedSequence) {
   return (e: React.SyntheticEvent<HTMLButtonElement>) =>
     dispatch(copySequence(sequence));
 };
@@ -44,54 +44,58 @@ let copy = function (dispatch: Function, sequence: TaggedSequence) {
 export class SequenceEditorMiddleActive extends
   React.Component<ActiveMiddleProps, {}> {
   render() {
-    let { dispatch, sequence } = this.props;
-    let fixThisToo = function (key: string) {
-      let xfer = dispatch(stepGet(key)) as DataXferObj;
+    const { dispatch, sequence } = this.props;
+    const fixThisToo = function (key: string) {
+      const xfer = dispatch(stepGet(key)) as DataXferObj;
       pushStep(xfer.value, dispatch, sequence);
     };
 
     return (
-      <div>
-        <div className="button-group">
-          <SaveBtn status={sequence.specialStatus}
-            onClick={() => { dispatch(save(sequence.uuid)); }} />
-          <TestButton
-            syncStatus={this.props.syncStatus}
-            sequence={sequence}
-            onFail={warning}
-            onClick={() => execSequence(sequence.body)} />
-          <button
-            className="fb-button red"
-            onClick={() => dispatch(destroy(sequence.uuid))}>
-            {t("Delete")}
-          </button>
-          <button
-            className="fb-button yellow"
-            onClick={copy(dispatch, sequence)}>
-            {t("Copy")}
-          </button>
+      <div className="sequence-editor-content">
+        <div className="sequence-editor-tools">
+          <div className="button-group">
+            <SaveBtn status={sequence.specialStatus}
+              onClick={() => { dispatch(save(sequence.uuid)); }} />
+            <TestButton
+              syncStatus={this.props.syncStatus}
+              sequence={sequence}
+              onFail={warning}
+              onClick={() => execSequence(sequence.body)} />
+            <button
+              className="fb-button red"
+              onClick={() => dispatch(destroy(sequence.uuid))}>
+              {t("Delete")}
+            </button>
+            <button
+              className="fb-button yellow"
+              onClick={copy(dispatch, sequence)}>
+              {t("Copy")}
+            </button>
+          </div>
+          <Row>
+            <Col xs={11}>
+              <BlurableInput value={sequence.body.name}
+                onCommit={(e) => {
+                  dispatch(edit(sequence, { name: e.currentTarget.value }));
+                }} />
+            </Col>
+            <ColorPicker
+              current={sequence.body.color}
+              onChange={color => editCurrentSequence(dispatch, sequence, { color })} />
+          </Row>
+          <hr style={{ marginBottom: 0 }} />
         </div>
-        <Row>
-          <Col xs={11}>
-            <BlurableInput value={sequence.body.name}
-              onCommit={(e) => {
-                dispatch(edit(sequence, { name: e.currentTarget.value }));
-              }} />
-          </Col>
-          <ColorPicker
-            current={sequence.body.color}
-            onChange={color => editCurrentSequence(dispatch, sequence, { color })} />
-        </Row>
-        <hr style={{ marginBottom: 0 }} />
-        <AllSteps onDrop={onDrop(dispatch, sequence)} {...this.props} />
-        <Row>
-          <Col xs={12}>
-            <DropArea isLocked={true}
-              callback={fixThisToo}>
-              {t("DRAG COMMAND HERE")}
-            </DropArea>
-          </Col>
-        </Row>
+        <div className="sequence">
+          <AllSteps onDrop={onDrop(dispatch, sequence)} {...this.props} />
+          <Row>
+            <Col xs={12}>
+              <DropArea isLocked={true}
+                callback={fixThisToo}>
+                {t("DRAG COMMAND HERE")}
+              </DropArea>
+            </Col>
+          </Row>
+        </div>
       </div>
     );
   }

@@ -13,6 +13,10 @@ conf.output = {
 conf.devServer = {
   port: devServerPort,
   disableHostCheck: true,
+  watchOptions: {
+    aggregateTimeout: 300,
+    poll: 1000
+  },
   host: "0.0.0.0",
   headers: { 'Access-Control-Allow-Origin': '*' }
 };

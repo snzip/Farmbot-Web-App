@@ -41,8 +41,6 @@ export let regimensReducer = generateReducer<RegimenState>(initialState)
   .add<TaggedResource>(Actions.DESTROY_RESOURCE_OK, (s, { payload }) => {
     switch (payload.uuid) {
       case s.selectedSequenceUUID:
-        s.selectedSequenceUUID = undefined;
-        break;
       case s.currentRegimen:
         s.selectedSequenceUUID = undefined;
         break;
@@ -72,9 +70,9 @@ export let regimensReducer = generateReducer<RegimenState>(initialState)
     return s;
   })
   .add<{ week: number, day: number }>(Actions.TOGGLE_DAY, (s, { payload }) => {
-    let week = s.weeks[payload.week];
-    let day = `day${payload.day}`;
-    let days = (week.days as Dictionary<boolean>);
+    const week = s.weeks[payload.week];
+    const day = `day${payload.day}`;
+    const days = (week.days as Dictionary<boolean>);
     days[day] = !days[day];
     return s;
   })

@@ -6,7 +6,7 @@
   z-index: 1;
   .panel-container {
     width: 100%;
-    height: 88vh;
+    height: 100%;
     overflow-x: hidden;
     font-size: 1.6rem;
     padding-bottom: 3rem;
@@ -18,6 +18,7 @@
 }
 
 .panel-container {
+  overflow: hidden;
   &.green-panel {
     background-color: $light_green;
   }
@@ -121,11 +122,21 @@
       color: $white;
     }
   }
+  button {
+    margin-left: 4px;
+  }
 }
 
 .plant-inventory-panel {
   .panel-content {
-    padding: 6rem 2.4rem;
+    padding: 5rem 1.4rem;
+  }
+}
+
+.plant-selection-panel {
+  .panel-content {
+    padding: 15rem 1.4rem;
+    pointer-events: none;
   }
 }
 
@@ -135,7 +146,7 @@
     vertical-align: bottom;
   }
   .panel-top {
-    padding: 6rem 1rem;
+    padding: 5rem 0rem;
     .panel-content {
       padding: 1rem 1rem 6rem;
     }
@@ -148,6 +159,12 @@
     color: $black;
     text-decoration: underline !important;
   }
+}
+
+.plant-panel-content {
+  max-height: calc(100vh - 19rem);
+  overflow-y: auto;
+  overflow-x: hidden;
 }
 
 .add-farm-event-panel {
@@ -163,4 +180,8 @@
 .edit-farm-event-panel button.magenta {
   margin-top: 1rem;
   margin-left: 1rem;
+}
+
+.plant-panel-back-arrow {
+  margin-right: 1rem;
 }

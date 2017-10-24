@@ -2,7 +2,7 @@ import * as React from "react";
 import { connect } from "react-redux";
 import { DetectorState, HSV } from "./interfaces";
 import { TitleBar } from "./title";
-import { devices } from "../../device";
+import { getDevice } from "../../device";
 import { Row, Col, Widget, WidgetBody } from "../../ui/index";
 import { t } from "i18next";
 import { resetWeedDetection, scanImage, test } from "./actions";
@@ -25,8 +25,8 @@ export class WeedDetector
   }
 
   clearWeeds = () => {
-    let progress = (p: Readonly<Progress>) => {
-      let percentage = `${Math.round((p.completed / p.total) * 100)} %`;
+    const progress = (p: Readonly<Progress>) => {
+      const percentage = `${Math.round((p.completed / p.total) * 100)} %`;
       this.setState({ deletionProgress: p.isDone ? "" : percentage });
     };
     this.props.dispatch(resetWeedDetection(progress));
@@ -41,7 +41,7 @@ export class WeedDetector
   };
 
   test = () => {
-    devices.current.execScript("plant-detection");
+    getDevice().execScript("plant-detection");
   }
 
   /** Maps <ImageWorkspace/> props to weed detector ENV vars. */
@@ -58,7 +58,8 @@ export class WeedDetector
   });
 
   render() {
-    return <Widget className="weed-detector-widget coming-soon">
+    const classname = "weed-detector-widget";
+    return <Widget className={classname}>
       <TitleBar
         onDeletionClick={this.clearWeeds}
         deletionProgress={this.state.deletionProgress}

@@ -1,30 +1,40 @@
 import * as React from "react";
-import { render } from "enzyme";
+import { shallow } from "enzyme";
 import { MustBeOnline } from "../must_be_online";
 
 describe("<MustBeOnline/>", function () {
-  it("Does not render when status is 'unknown'", function () {
-    let elem = <MustBeOnline status="unknown">
-      <span>Invisible</span>
+  it("Covers content when status is 'unknown'", function () {
+    const elem = <MustBeOnline status="unknown">
+      <span>Covered</span>
     </MustBeOnline>;
-    let text = render(elem).text();
-    expect(text).not.toContain("Invisible");
+    const overlay = shallow(elem).find("div");
+    expect(overlay.hasClass("unavailable")).toBeTruthy();
   });
 
-  it("Does not render when status is undefined", function () {
-    let elem = <MustBeOnline status={undefined} fallback="NOPE!">
-      <span>Invisible</span>
+  it("Covers content when status is undefined", function () {
+    const elem = <MustBeOnline status={undefined}>
+      <span>Covered</span>
     </MustBeOnline>;
-    let text = render(elem).text();
-    expect(text).not.toContain("Invisible");
-    expect(text).toContain("NOPE!");
+    const overlay = shallow(elem).find("div");
+    expect(overlay.hasClass("unavailable")).toBeTruthy();
+    expect(overlay.hasClass("banner")).toBeTruthy();
   });
 
-  it("Renders when locked open", function () {
-    let elem = <MustBeOnline status="unknown" lockOpen={true}>
-      <span>Visible</span>
+  it("Uncovered when locked open", function () {
+    const elem = <MustBeOnline status="unknown" lockOpen={true}>
+      <span>Uncovered</span>
     </MustBeOnline>;
-    let text = render(elem).text();
-    expect(text).toContain("Visible");
+    const overlay = shallow(elem).find("div");
+    expect(overlay.hasClass("unavailable")).toBeFalsy();
+    expect(overlay.hasClass("banner")).toBeFalsy();
+  });
+
+  it("Doesn't show banner", function () {
+    const elem = <MustBeOnline status="unknown" hideBanner={true}>
+      <span>Uncovered</span>
+    </MustBeOnline>;
+    const overlay = shallow(elem).find("div");
+    expect(overlay.hasClass("unavailable")).toBeTruthy();
+    expect(overlay.hasClass("banner")).toBeFalsy();
   });
 });

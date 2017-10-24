@@ -1,6 +1,8 @@
+import { t } from "i18next";
 import * as _ from "lodash";
+import { Content } from "../../constants";
 /** Remove this in October 2017 - RC */
-let ONLY_ONCE = {
+const ONLY_ONCE = {
   need_to_talk: true
 };
 
@@ -8,24 +10,17 @@ export function inferTimezone(current: string | undefined): string {
   if (current) {
     return current;
   }
-  let browserTime = maybeResolveTZ();
+  const browserTime = maybeResolveTZ();
   if (browserTime) {
     if (ONLY_ONCE.need_to_talk) {
-      alert("This account did not have a timezone set. " +
-        "Farmbot requires a timezone to operate. " +
-        "We have updated your timezone settings based on your browser. " +
-        "Please verify these settings in the device settings panel. " +
-        "Device sync is recommended.");
+      alert(t(Content.TIMEZONE_GUESS_BROWSER));
       ONLY_ONCE.need_to_talk = false;
     }
     // WARNING SIDE EFFECTS!!!
     return browserTime;
   }
   if (ONLY_ONCE.need_to_talk) {
-    alert("Warning: Farmbot could not guess your timezone. " +
-      "We have defaulted your timezone to UTC, which is less than ideal for " +
-      "most users. Please select your timezone from the dropdown. Device " +
-      "sync is recommended.");
+    alert(t(Content.TIMEZONE_GUESS_UTC));
     ONLY_ONCE.need_to_talk = false;
   }
   return "UTC";

@@ -1,16 +1,11 @@
 import { BotState, HardwareState, Xyz, ControlPanelState } from "./interfaces";
 import { generateReducer } from "../redux/generate_reducer";
 import { SyncStatus } from "farmbot/dist";
-import { localStorageBoolFetch } from "../util";
 import { Actions } from "../constants";
 import { EncoderDisplay } from "../controls/interfaces";
 import { EXPECTED_MAJOR, EXPECTED_MINOR } from "./actions";
-
-export const X_AXIS_INVERTED = "x_axis_inverted";
-export const Y_AXIS_INVERTED = "y_axis_inverted";
-export const Z_AXIS_INVERTED = "z_axis_inverted";
-export const RAW_ENCODERS = "raw_encoders";
-export const SCALED_ENCODERS = "scaled_encoders";
+import { Session } from "../session";
+import { BooleanSetting } from "../session_keys";
 
 /**
  * TODO: Refactor this method to use semverCompare() now that it is a thing.
@@ -19,19 +14,18 @@ export const SCALED_ENCODERS = "scaled_encoders";
 export function versionOK(stringyVersion = "0.0.0",
   _EXPECTED_MAJOR = EXPECTED_MAJOR,
   _EXPECTED_MINOR = EXPECTED_MINOR) {
-  let [actual_major, actual_minor] = stringyVersion
+  const [actual_major, actual_minor] = stringyVersion
     .split(".")
     .map(x => parseInt(x, 10));
   if (actual_major > _EXPECTED_MAJOR) {
     return true;
   } else {
-    let majorOK = (actual_major == _EXPECTED_MAJOR);
-    let minorOK = (actual_minor >= _EXPECTED_MINOR);
+    const majorOK = (actual_major == _EXPECTED_MAJOR);
+    const minorOK = (actual_minor >= _EXPECTED_MINOR);
     return (majorOK && minorOK);
   }
 }
 export let initialState: BotState = {
-  connectedToMQTT: false,
   stepSize: 100,
   controlPanelState: {
     homing_and_calibration: false,
@@ -73,11 +67,29 @@ export let initialState: BotState = {
   dirty: false,
   currentOSVersion: undefined,
   currentFWVersion: undefined,
-  x_axis_inverted: !localStorageBoolFetch(X_AXIS_INVERTED),
-  y_axis_inverted: !localStorageBoolFetch(Y_AXIS_INVERTED),
-  z_axis_inverted: !localStorageBoolFetch(Z_AXIS_INVERTED),
-  raw_encoders: !localStorageBoolFetch(RAW_ENCODERS),
-  scaled_encoders: !localStorageBoolFetch(SCALED_ENCODERS)
+  axis_inversion: {
+    x: !!Session.getBool(BooleanSetting.xAxisInverted),
+    y: !!Session.getBool(BooleanSetting.yAxisInverted),
+    z: !!Session.getBool(BooleanSetting.zAxisInverted),
+  },
+  encoder_visibility: {
+    raw_encoders: !!Session.getBool(BooleanSetting.rawEncoders),
+    scaled_encoders: !!Session.getBool(BooleanSetting.scaledEncoders),
+  }
+};
+
+/** Translate X/Y/Z to the name that is used in `localStorage` */
+export const INVERSION_MAPPING: Record<Xyz, BooleanSetting> = {
+  x: BooleanSetting.xAxisInverted,
+  y: BooleanSetting.yAxisInverted,
+  z: BooleanSetting.zAxisInverted,
+};
+
+/** Translate `encode_visibility` key name to the name that is
+ * used in `localStorage` */
+export const ENCODER_MAPPING: Record<EncoderDisplay, BooleanSetting> = {
+  raw_encoders: BooleanSetting.rawEncoders,
+  scaled_encoders: BooleanSetting.scaledEncoders,
 };
 
 export let botReducer = generateReducer<BotState>(initialState)
@@ -98,12 +110,19 @@ export let botReducer = generateReducer<BotState>(initialState)
     s.controlPanelState[a.payload] = !s.controlPanelState[a.payload];
     return s;
   })
+  .add<boolean>(Actions.BULK_TOGGLE_CONTROL_PANEL, (s, a) => {
+    s.controlPanelState.homing_and_calibration = a.payload;
+    s.controlPanelState.motors = a.payload;
+    s.controlPanelState.encoders_and_endstops = a.payload;
+    s.controlPanelState.danger_zone = a.payload;
+    return s;
+  })
   .add<string>(Actions.FETCH_OS_UPDATE_INFO_OK, (s, { payload }) => {
     s.currentOSVersion = payload;
     return s;
   })
   .add<HardwareState>(Actions.BOT_CHANGE, (s, { payload }) => {
-    let nextState = payload;
+    const nextState = payload;
     s.hardware = nextState;
     versionOK(nextState.informational_settings.controller_version);
     return s;
@@ -117,43 +136,10 @@ export let botReducer = generateReducer<BotState>(initialState)
     return s;
   })
   .add<Xyz>(Actions.INVERT_JOG_BUTTON, (s, { payload }) => {
-    switch (payload) {
-      case "x":
-        s.x_axis_inverted = !s.x_axis_inverted;
-        localStorage.setItem(X_AXIS_INVERTED,
-          JSON.stringify(localStorageBoolFetch(X_AXIS_INVERTED)));
-        return s;
-      case "y":
-        s.y_axis_inverted = !s.y_axis_inverted;
-        localStorage.setItem(Y_AXIS_INVERTED,
-          JSON.stringify(localStorageBoolFetch(Y_AXIS_INVERTED)));
-        return s;
-      case "z":
-        s.z_axis_inverted = !s.z_axis_inverted;
-        localStorage.setItem(Z_AXIS_INVERTED,
-          JSON.stringify(localStorageBoolFetch(Z_AXIS_INVERTED)));
-        return s;
-      default:
-        throw new Error("Attempted to invert invalid jog button direction.");
-    }
+    s.axis_inversion[payload] = !s.axis_inversion[payload];
+    return s;
   })
   .add<EncoderDisplay>(Actions.DISPLAY_ENCODER_DATA, (s, { payload }) => {
-    switch (payload) {
-      case "raw_encoders":
-        s.raw_encoders = !s.raw_encoders;
-        localStorage.setItem(RAW_ENCODERS,
-          JSON.stringify(localStorageBoolFetch(RAW_ENCODERS)));
-        return s;
-      case "scaled_encoders":
-        s.scaled_encoders = !s.scaled_encoders;
-        localStorage.setItem(SCALED_ENCODERS,
-          JSON.stringify(localStorageBoolFetch(SCALED_ENCODERS)));
-        return s;
-      default:
-        throw new Error("Attempted to toggle display of invalid data.");
-    }
-  })
-  .add<boolean>(Actions.SET_MQTT_STATUS, (s, a) => {
-    s.connectedToMQTT = a.payload;
+    s.encoder_visibility[payload] = !s.encoder_visibility[payload];
     return s;
   });

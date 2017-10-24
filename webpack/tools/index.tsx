@@ -14,8 +14,8 @@ export class Tools extends React.Component<Props, Partial<ToolsState>> {
     () => this.setState({ [name]: !this.state[name] });
 
   render() {
-    let isEditingBays = this.state.editingBays;
-    let isEditingTools = this.state.editingTools;
+    const isEditingBays = this.state.editingBays;
+    const isEditingTools = this.state.editingTools;
     return <Page className="tools">
       <Row>
         <Col sm={7}>
@@ -29,7 +29,7 @@ export class Tools extends React.Component<Props, Partial<ToolsState>> {
             <ToolBayForm
               toggle={this.toggle("editingBays")}
               dispatch={this.props.dispatch}
-              position={this.props.botPosition}
+              botPosition={this.props.botPosition}
               toolSlots={this.props.toolSlots}
               getToolSlots={this.props.getToolSlots}
               getChosenToolOption={this.props.getChosenToolOption}

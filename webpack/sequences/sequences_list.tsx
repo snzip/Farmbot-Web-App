@@ -14,26 +14,28 @@ import { TaggedSequence } from "../resources/tagged_resources";
 import { init } from "../api/crud";
 import { ToolTips } from "../constants";
 
-let sequenceList = (dispatch: Function) =>
+const sequenceList = (dispatch: Function) =>
   (ts: TaggedSequence, index: number) => {
-    let css = [
+    const css = [
       `fb-button`,
       `block`,
       `full-width`,
       `${ts.body.color || "purple"}`
     ];
     lastUrlChunk() === urlFriendly(ts.body.name) && css.push("active");
-    let click = () => dispatch(selectSequence(ts.uuid));
-    let name = ts.body.name + (ts.specialStatus ? "*" : "");
-    let { uuid } = ts;
-    return <Link
-      to={`/app/sequences/${urlFriendly(ts.body.name) || ""}`}
-      key={uuid}
-      onClick={click} >
-      <button className={css.join(" ")}>
-        {name}
-      </button>
-    </Link>;
+    const click = () => dispatch(selectSequence(ts.uuid));
+    const name = ts.body.name + (ts.specialStatus ? "*" : "");
+    const { uuid } = ts;
+    return <div className="sequence-list-items" key={uuid}>
+      <Link
+        to={`/app/sequences/${urlFriendly(ts.body.name) || ""}`}
+        key={uuid}
+        onClick={click} >
+        <button className={css.join(" ")}>
+          {name}
+        </button>
+      </Link>
+    </div>;
   };
 
 export class SequencesList extends
@@ -44,7 +46,7 @@ export class SequencesList extends
   };
 
   componentDidMount() {
-    let { dispatch, sequence, sequences } = this.props;
+    const { dispatch, sequence, sequences } = this.props;
 
     sequence && urlFriendly(sequence.body.name) &&
       push("/app/sequences/" + urlFriendly(sequence.body.name));
@@ -76,11 +78,11 @@ export class SequencesList extends
   }
 
   render() {
-    let { sequences, dispatch } = this.props;
-    let searchTerm = this.state.searchTerm.toLowerCase();
+    const { sequences, dispatch } = this.props;
+    const searchTerm = this.state.searchTerm.toLowerCase();
 
     return (
-      <div className="sequence-list">
+      <div className="sequence-list-panel">
         <h3>
           <i>{t("Sequences")}</i>
         </h3>
@@ -98,15 +100,17 @@ export class SequencesList extends
           placeholder={t("Search Sequences...")} />
         <Row>
           <Col xs={12}>
-            {
-              sortResourcesById(sequences)
-                .filter(seq => seq
-                  .body
-                  .name
-                  .toLowerCase()
-                  .includes(searchTerm))
-                .map(sequenceList(dispatch))
-            }
+            <div className="sequence-list">
+              {
+                sortResourcesById(sequences)
+                  .filter(seq => seq
+                    .body
+                    .name
+                    .toLowerCase()
+                    .includes(searchTerm))
+                  .map(sequenceList(dispatch))
+              }
+            </div>
           </Col>
         </Row>
       </div>

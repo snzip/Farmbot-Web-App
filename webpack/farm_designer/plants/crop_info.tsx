@@ -1,5 +1,4 @@
 import * as React from "react";
-import { BackArrow } from "../../ui";
 import { t } from "i18next";
 import * as _ from "lodash";
 import { DATA_URI, DEFAULT_ICON, svgToUrl } from "../../open_farm/index";
@@ -27,13 +26,13 @@ export function mapStateToProps(props: Everything): CropInfoProps {
 export class CropInfo extends React.Component<CropInfoProps, {}> {
 
   componentDidMount() {
-    let crop = history.getCurrentLocation().pathname.split("/")[5];
+    const crop = history.getCurrentLocation().pathname.split("/")[5];
     OFSearch(crop)(this.props.dispatch);
   }
 
   handleDragStart = (e: DraggableEvent) => {
-    let icon = e.currentTarget.getAttribute("data-icon-url");
-    let img = document.createElement("img");
+    const icon = e.currentTarget.getAttribute("data-icon-url");
+    const img = document.createElement("img");
     icon ? img.src = DATA_URI + icon : DEFAULT_ICON;
 
     // TODO: Setting these doesn't work by default, needs a fix
@@ -45,22 +44,24 @@ export class CropInfo extends React.Component<CropInfoProps, {}> {
   }
 
   render() {
-    let crop = history.getCurrentLocation().pathname.split("/")[5];
-    let result =
+    const crop = history.getCurrentLocation().pathname.split("/")[5];
+    const result =
       findBySlug(this.props.cropSearchResults, crop || "PLANT_NOT_FOUND");
 
-    let basePath = "/app/designer/plants/crop_search/";
+    const basePath = "/app/designer/plants/crop_search/";
 
-    let backgroundURL = `linear-gradient(
+    const backgroundURL = `linear-gradient(
       rgba(0, 0, 0, 0.7), rgba(0, 0, 0, 0.7)), url(${result.image})`;
 
     return <div className="panel-container green-panel crop-info-panel">
       <div className="panel-header green-panel"
         style={{ background: backgroundURL }}>
         <p className="panel-title">
-          <BackArrow /> {result.crop.name}
+          <i className="fa fa-arrow-left plant-panel-back-arrow"
+            onClick={() => history.push(basePath)} />
+          {result.crop.name}
           <a
-            className="right-button mobile-only"
+            className="right-button"
             onClick={() => history.push(basePath + crop + "/add")}>
             {t("Add to map")}
           </a>
@@ -105,8 +106,8 @@ export class CropInfo extends React.Component<CropInfoProps, {}> {
                 ])
                 .toPairs()
                 .map((pair: string, i: number) => {
-                  let key = pair[0];
-                  let value = pair[1];
+                  const key = pair[0];
+                  const value = pair[1];
                   switch (key) {
                     case "svg_icon":
                       /**

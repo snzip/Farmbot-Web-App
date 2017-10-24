@@ -8,12 +8,17 @@ import { prettyPrintApiErrors, HttpData } from "../util";
 import { API } from "../api";
 import { Session } from "../session";
 import { FrontPageState } from "./interfaces";
-import { Row, Col, Widget, WidgetHeader, WidgetBody, BlurableInput } from "../ui/index";
+import { Row, Col } from "../ui/index";
+import { LoginProps, Login } from "./login";
+import { ForgotPassword, ForgotPasswordProps } from "./forgot_password";
+import { ResendVerification } from "./resend_verification";
+import { CreateAccount } from "./create_account";
 
 export class FrontPage extends React.Component<{}, Partial<FrontPageState>> {
   constructor() {
     super();
     this.state = {
+      registrationSent: false,
       regEmail: "",
       regName: "",
       regPassword: "",
@@ -23,14 +28,14 @@ export class FrontPage extends React.Component<{}, Partial<FrontPageState>> {
       showServerOpts: false,
       serverURL: "",
       serverPort: "",
-      forgotPassword: false,
-      agreeToTerms: false
+      agreeToTerms: false,
+      activePanel: "login"
     };
-    this.toggleServerOpts = this.toggleServerOpts.bind(this);
+    this.toggleServerOpts = this.toggleServerOpts;
   }
 
   componentDidMount() {
-    if (Session.get()) { window.location.href = "/app/controls"; }
+    if (Session.fetchStoredToken()) { window.location.href = "/app/controls"; }
     logInit();
     API.setBaseUrl(API.fetchBrowserLocation());
     this.setState({
@@ -41,7 +46,7 @@ export class FrontPage extends React.Component<{}, Partial<FrontPageState>> {
 
   set = (name: keyof FrontPageState) =>
     (event: React.FormEvent<HTMLInputElement>) => {
-      let state: { [name: string]: string } = {};
+      const state: { [name: string]: string } = {};
       state[name] = (event.currentTarget).value;
       // WHY THE 2 ms timeout you ask????
       // There was a bug reported in Firefox.
@@ -50,10 +55,10 @@ export class FrontPage extends React.Component<{}, Partial<FrontPageState>> {
       setTimeout(() => this.setState(state), 2);
     };
 
-  submitLogin(e: React.FormEvent<{}>) {
+  submitLogin = (e: React.FormEvent<{}>) => {
     e.preventDefault();
-    let { email, loginPassword, showServerOpts } = this.state;
-    let payload = { user: { email, password: loginPassword } };
+    const { email, loginPassword, showServerOpts } = this.state;
+    const payload = { user: { email, password: loginPassword } };
     let url: string;
     if (showServerOpts) {
       url = `//${this.state.serverURL}:${this.state.serverPort}`;
@@ -63,19 +68,26 @@ export class FrontPage extends React.Component<{}, Partial<FrontPageState>> {
     API.setBaseUrl(url);
     axios.post(API.current.tokensPath, payload)
       .then((resp: HttpData<AuthState>) => {
-        Session.put(resp.data);
+        Session.replaceToken(resp.data);
         window.location.href = "/app/controls";
       }).catch((error: Error) => {
-        if (_.get(error, "response.status") === 451) {
-          window.location.href = "/tos_update";
+        switch (_.get(error, "response.status")) {
+          case 451: // TOS was updated; User must agree to terms.
+            window.location.href = "/tos_update";
+            break;
+          case 403: // User did not click verification email link.
+            log(t("Account Not Verified"));
+            this.setState({ activePanel: "resendVerificationEmail" });
+            break;
+          default:
+            log(prettyPrintApiErrors(error as {}));
         }
-        log(prettyPrintApiErrors(error as {}));
       });
   }
 
-  submitRegistration(e: React.FormEvent<{}>) {
+  submitRegistration = (e: React.FormEvent<{}>) => {
     e.preventDefault();
-    let {
+    const {
       regEmail,
       regName,
       regPassword,
@@ -83,7 +95,7 @@ export class FrontPage extends React.Component<{}, Partial<FrontPageState>> {
       agreeToTerms
     } = this.state;
 
-    let form = {
+    const form = {
       user: {
         name: regName,
         email: regEmail,
@@ -93,40 +105,39 @@ export class FrontPage extends React.Component<{}, Partial<FrontPageState>> {
       }
     };
     axios.post(API.current.usersPath, form).then(() => {
-      let m = "Almost done! Check your email for the verification link.";
+      const m = "Almost done! Check your email for the verification link.";
       success(t(m));
+      this.setState({ registrationSent: true });
     }).catch(error => {
       log(prettyPrintApiErrors(error));
     });
   }
 
-  toggleServerOpts() {
+  toggleServerOpts = () => {
     this.setState({ showServerOpts: !this.state.showServerOpts });
   }
 
-  toggleForgotPassword() {
-    this.setState({ forgotPassword: !this.state.forgotPassword });
-  }
+  toggleForgotPassword = () => this.setState({ activePanel: "forgotPassword" });
 
-  submitForgotPassword(e: React.SyntheticEvent<HTMLInputElement>) {
+  submitForgotPassword = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    let { email } = this.state;
-    let data = { email };
+    const { email } = this.state;
+    const data = { email };
     axios.post(API.current.passwordResetPath, data)
       .then(() => {
-        success("Email has been sent.", "Forgot Password");
-        this.setState({ forgotPassword: false });
+        success(t("Email has been sent."), t("Forgot Password"));
+        this.setState({ activePanel: "login" });
       }).catch(error => {
         let errorMessage = prettyPrintApiErrors(error);
         if (errorMessage.toLowerCase().includes("not found")) {
           errorMessage =
             `That email address is not associated with an account.`;
         }
-        log(errorMessage);
+        log(t(errorMessage));
       });
   }
 
-  maybeRenderTos() {
+  maybeRenderTos = () => {
     const TOS_URL = globalConfig.TOS_URL;
     if (TOS_URL) {
       const PRV_URL = globalConfig.PRIV_URL;
@@ -135,7 +146,7 @@ export class FrontPage extends React.Component<{}, Partial<FrontPageState>> {
           <div>
             <label>{t("I agree to the terms of use")}</label>
             <input type="checkbox"
-              onChange={this.set("agreeToTerms").bind(this)}
+              onChange={this.set("agreeToTerms")}
               value={this.state.agreeToTerms ? "false" : "true"} />
           </div>
           <ul>
@@ -159,192 +170,111 @@ export class FrontPage extends React.Component<{}, Partial<FrontPageState>> {
     }
   }
 
-  defaultContent() {
-    let { showServerOpts, forgotPassword } = this.state;
-    let buttonStylesUniqueToOnlyThisPage = {
-      marginTop: "1rem",
-      padding: ".5rem 1.6rem",
-      fontSize: "1.2rem",
-      borderBottom: "none"
+  loginPanel = () => {
+    const props: LoginProps = {
+      email: this.state.email || "",
+      onEmailChange: this.set("email"),
+      loginPassword: this.state.loginPassword || "",
+      onLoginPasswordChange: this.set("loginPassword"),
+      serverURL: this.state.serverURL || "",
+      onServerURLChange: this.set("serverURL"),
+      serverPort: this.state.serverPort || "",
+      onServerPortChange: this.set("serverPort"),
+      showServerOpts: !!this.state.showServerOpts,
+      onToggleServerOpts: this.toggleServerOpts,
+      onToggleForgotPassword: this.toggleForgotPassword,
+      onSubmit: this.submitLogin,
     };
-    let expandIcon = showServerOpts ? "minus" : "plus";
-    let { toggleServerOpts } = this;
-    return (
-      <div className="static-page">
-        <Row>
-          <Col xs={12}>
-            <h1 className="text-center">
-              {t("Welcome to the")}
-              <br className="hidden-sm hidden-md hidden-lg hidden-xl" />
-              &nbsp;
-              {t("FarmBot Web App")}
-            </h1>
-          </Col>
-        </Row>
-
-        <div className="inner-width">
-          <Row>
-            <h2 className="text-center">
-              <Col xs={12}>
-                {t("Setup, customize, and control FarmBot from your")}
-                &nbsp;
-            <span className="hidden-xs hidden-sm hidden-md">
-                  {t("computer")}
-                </span>
-                <span className="hidden-xs hidden-lg hidden-xl">
-                  {t("tablet")}
-                </span>
-                <span className="hidden-sm hidden-md hidden-lg hidden-xl">
-                  {t("smartphone")}
-                </span>
-              </Col>
-            </h2>
-          </Row>
-          <img
-            className="hidden-xs hidden-sm col-md-7"
-            src="/app-resources/img/farmbot-desktop.png" />
-          <img
-            className="hidden-xs hidden-md hidden-lg hidden-xl col-sm-7"
-            src="/app-resources/img/farmbot-tablet.png" />
-          <Row>
-            {!forgotPassword && (
-              <Col xs={12} sm={5}>
-                <Widget>
-                  <WidgetHeader title={"Login"}>
-                    <button
-                      className="fb-button gray"
-                      onClick={toggleServerOpts} >
-                      <i className={`fa fa-${expandIcon}`} />
-                    </button>
-                  </WidgetHeader>
-                  <WidgetBody>
-                    <form onSubmit={this.submitLogin.bind(this)}>
-                      <label>
-                        {t("Email")}
-                      </label>
-                      <BlurableInput
-                        type="email"
-                        value={this.state.email || ""}
-                        onCommit={this.set("email").bind(this)} />
-                      <label>
-                        {t("Password")}
-                      </label>
-                      <BlurableInput
-                        type="password"
-                        value={this.state.loginPassword || ""}
-                        onCommit={this.set("loginPassword").bind(this)} />
-                      <a
-                        className="forgot-password"
-                        onClick={this.toggleForgotPassword.bind(this)} >
-                        {t("Forgot password?")}
-                      </a>
-                      {this.state.showServerOpts &&
-                        <div>
-                          <label>
-                            {t("Server URL")}
-                          </label>
-                          <BlurableInput
-                            type="text"
-                            onCommit={this.set("serverURL").bind(this)}
-                            value={this.state.serverURL || ""} />
-                          <label>
-                            {t("Server Port")}
-                          </label>
-                          <BlurableInput
-                            type="text"
-                            onCommit={this.set("serverPort").bind(this)}
-                            value={this.state.serverPort || ""} />
-                        </div>
-                      }
-                      <Row>
-                        <button
-                          className="fb-button green pull-right"
-                          style={buttonStylesUniqueToOnlyThisPage} >
-                          {t("Login")}
-                        </button>
-                      </Row>
-                    </form>
-                  </WidgetBody>
-                </Widget>
-              </Col>
-            )}
-            {forgotPassword && (
-              <Col xs={12} sm={5}>
-                <Widget>
-                  <WidgetHeader title={"Reset Password"}>
-                    <button
-                      className="fb-button gray"
-                      onClick={this.toggleForgotPassword.bind(this)} >
-                      {t("BACK")}
-                    </button>
-                  </WidgetHeader>
-                  <WidgetBody>
-                    <form onSubmit={this.submitForgotPassword.bind(this)}>
-                      <label>{t("Enter Email")}</label>
-                      <BlurableInput
-                        type="email"
-                        value={this.state.email || ""}
-                        onCommit={this.set("email").bind(this)} />
-                      <Row>
-                        <button
-                          className="fb-button green"
-                          style={buttonStylesUniqueToOnlyThisPage}>
-                          {t("Reset Password")}
-                        </button>
-                      </Row>
-                    </form>
-                  </WidgetBody>
-                </Widget>
-              </Col>
-            )}
-            <Col xs={12} sm={5}>
-              <Widget>
-                <WidgetHeader title={"Create An Account"} />
-                <WidgetBody>
-                  <form onSubmit={this.submitRegistration.bind(this)}>
-                    <label>
-                      {t("Email")}
-                    </label>
-                    <BlurableInput
-                      type="email"
-                      value={this.state.regEmail || ""}
-                      onCommit={this.set("regEmail").bind(this)} />
-                    <label>
-                      {t("Name")}
-                    </label>
-                    <BlurableInput
-                      type="text"
-                      value={this.state.regName || ""}
-                      onCommit={this.set("regName").bind(this)} />
-                    <label>
-                      {t("Password")}
-                    </label>
-                    <BlurableInput
-                      type="password"
-                      value={this.state.regPassword || ""}
-                      onCommit={this.set("regPassword").bind(this)} />
-                    <label>{t("Verify Password")}</label>
-                    <BlurableInput
-                      type="password"
-                      value={this.state.regConfirmation || ""}
-                      onCommit={this.set("regConfirmation").bind(this)} />
-                    {this.maybeRenderTos()}
-                    <Row>
-                      <button
-                        className="fb-button green"
-                        style={buttonStylesUniqueToOnlyThisPage}>
-                        {t("Create Account")}
-                      </button>
-                    </Row>
-                  </form>
-                </WidgetBody>
-              </Widget>
-            </Col>
-          </Row>
-        </div>
-      </div>
-    );
+    return <Login {...props} />;
   }
 
-  render() { return Session.get() ? <div /> : this.defaultContent(); }
+  forgotPasswordPanel = () => {
+    const goBack = () => this.setState({ activePanel: "login" });
+    const props: ForgotPasswordProps = {
+      onGoBack: goBack,
+      onSubmit: this.submitForgotPassword,
+      email: this.state.email || "",
+      onEmailChange: this.set("email"),
+    };
+    return <ForgotPassword {...props} />;
+  }
+
+  resendVerificationPanel = () => {
+    const goBack = () => this.setState({ activePanel: "login" });
+    return <ResendVerification
+      onGoBack={goBack}
+      ok={(resp) => {
+        success(t("Verification email resent. Please check your email!"));
+        goBack();
+      }}
+      no={() => {
+        log(t("Unable to resend verification email. " +
+          "Are you already verified?"));
+        goBack();
+      }}
+      email={this.state.email || ""} />;
+  }
+
+  activePanel = () => {
+    switch (this.state.activePanel) {
+      case "forgotPassword": return this.forgotPasswordPanel();
+      case "resendVerificationEmail": return this.resendVerificationPanel();
+      case "login":
+      default:
+        return this.loginPanel();
+    }
+  }
+
+  defaultContent() {
+    return <div className="static-page">
+      <Row>
+        <Col xs={12}>
+          <h1 className="text-center">
+            {t("Welcome to the")}
+            <br className="hidden-sm hidden-md hidden-lg hidden-xl" />
+            &nbsp;
+              {t("FarmBot Web App")}
+          </h1>
+        </Col>
+      </Row>
+
+      <div className="inner-width">
+        <Row>
+          <h2 className="text-center">
+            <Col xs={12}>
+              {t("Setup, customize, and control FarmBot from your")}
+              &nbsp;
+            <span className="hidden-xs hidden-sm hidden-md">
+                {t("computer")}
+              </span>
+              <span className="hidden-xs hidden-lg hidden-xl">
+                {t("tablet")}
+              </span>
+              <span className="hidden-sm hidden-md hidden-lg hidden-xl">
+                {t("smartphone")}
+              </span>
+            </Col>
+          </h2>
+        </Row>
+        <img
+          className="hidden-xs hidden-sm col-md-7"
+          src="/app-resources/img/farmbot-desktop.png" />
+        <img
+          className="hidden-xs hidden-md hidden-lg hidden-xl col-sm-7"
+          src="/app-resources/img/farmbot-tablet.png" />
+        <Row>
+          <this.activePanel />
+          <CreateAccount
+            submitRegistration={this.submitRegistration}
+            sent={!!this.state.registrationSent}
+            get={(key) => this.state[key]}
+            set={(key, val) => this.setState({ [key]: val })}>
+            {this.maybeRenderTos()}
+          </CreateAccount>
+        </Row>
+      </div>
+    </div>;
+  }
+
+  render() { return Session.fetchStoredToken() ? <div /> : this.defaultContent(); }
 }

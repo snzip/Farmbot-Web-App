@@ -1,22 +1,36 @@
 import * as React from "react";
 import { SlotWithTool } from "../../../resources/interfaces";
 import { ToolSlotPoint } from "../tool_slot_point";
-import { BotOriginQuadrant } from "../../interfaces";
+import { MapTransformProps } from "../interfaces";
+import { history } from "../../../history";
 
 export interface ToolSlotLayerProps {
   visible: boolean;
   slots: SlotWithTool[];
-  botOriginQuadrant: BotOriginQuadrant;
+  mapTransformProps: MapTransformProps;
+  dispatch: Function;
 }
 
 export function ToolSlotLayer(props: ToolSlotLayerProps) {
-  let { slots, visible, botOriginQuadrant } = props;
-  return visible ? <g>
-    {slots.map(slot =>
-      <ToolSlotPoint
-        key={slot.toolSlot.uuid}
-        slot={slot}
-        quadrant={botOriginQuadrant} />
-    )}
-  </g> : <g />; // fallback
+  const pathArray = location.pathname.split("/");
+  const canClickTool = !(pathArray[3] === "plants" && pathArray.length > 4);
+  function goToToolsPage() {
+    if (canClickTool) {
+      history.push("/app/tools");
+    }
+  }
+  const { slots, visible, mapTransformProps } = props;
+  const cursor = canClickTool ? "pointer" : "default";
+  return <g
+    id="toolslot-layer"
+    onClick={goToToolsPage}
+    style={{ cursor: cursor }}>
+    {visible &&
+      slots.map(slot =>
+        <ToolSlotPoint
+          key={slot.toolSlot.uuid}
+          slot={slot}
+          mapTransformProps={mapTransformProps} />
+      )}
+  </g>;
 }

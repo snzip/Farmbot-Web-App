@@ -32,8 +32,9 @@ import {
 } from "../farmware/reducer";
 import { Actions } from "../constants";
 import { maybeTagSteps as dontTouchThis } from "./sequence_tagging";
+import { GeneralizedError } from "./actions";
 
-let consumerReducer = combineReducers<RestResources["consumers"]>({
+const consumerReducer = combineReducers<RestResources["consumers"]>({
   regimens,
   sequences,
   farm_designer,
@@ -71,9 +72,9 @@ export function emptyState(): RestResources {
   };
 }
 
-let initialState: RestResources = emptyState();
+const initialState: RestResources = emptyState();
 
-let afterEach = (state: RestResources, a: ReduxAction<object>) => {
+const afterEach = (state: RestResources, a: ReduxAction<object>) => {
   state.consumers = consumerReducer({
     sequences: state.consumers.sequences,
     regimens: state.consumers.regimens,
@@ -87,19 +88,19 @@ let afterEach = (state: RestResources, a: ReduxAction<object>) => {
 export let resourceReducer = generateReducer
   <RestResources>(initialState, afterEach)
   .add<ResourceReadyPayl>(Actions.SAVE_SPECIAL_RESOURCE, (s, { payload }) => {
-    let data = arrayWrap(payload);
-    let kind = payload.name;
+    const data = arrayWrap(payload);
+    const kind = payload.name;
     data.map((body: ResourceReadyPayl) => {
-      let crop = body.data as OFCropResponse;
+      const crop = body.data as OFCropResponse;
       if (crop.data) {
-        let cropInfo = crop.data.attributes;
+        const cropInfo = crop.data.attributes;
         addToIndex(s.index, kind, cropInfo, generateUuid(undefined, kind));
       }
     });
     return s;
   })
   .add<TaggedResource>(Actions.SAVE_RESOURCE_OK, (s, { payload }) => {
-    let resource = payload;
+    const resource = payload;
     resource.specialStatus = undefined;
     if (resource
       && resource.body) {
@@ -128,7 +129,7 @@ export let resourceReducer = generateReducer
     return s;
   })
   .add<TaggedResource>(Actions.DESTROY_RESOURCE_OK, (s, { payload }) => {
-    let resource = payload;
+    const resource = payload;
     switch (resource.kind) {
       case "crops":
       case "device":
@@ -141,6 +142,7 @@ export let resourceReducer = generateReducer
       case "tools":
       case "users":
       case "webcam_feed":
+      case "images":
         removeFromIndex(s.index, resource);
         break;
       default:
@@ -149,9 +151,9 @@ export let resourceReducer = generateReducer
     return s;
   })
   .add<TaggedResource>(Actions.UPDATE_RESOURCE_OK, (s, { payload }) => {
-    let uuid = payload.uuid;
+    const uuid = payload.uuid;
     s.index.references[uuid] = payload;
-    let tr = s.index.references[uuid];
+    const tr = s.index.references[uuid];
     if (tr) {
       tr.specialStatus = undefined;
       sanityCheck(tr);
@@ -163,16 +165,16 @@ export let resourceReducer = generateReducer
     }
   })
   .add<TaggedResource>(Actions._RESOURCE_NO, (s, { payload }) => {
-    let uuid = payload.uuid;
-    let tr = merge(findByUuid(s.index, uuid), payload);
+    const uuid = payload.uuid;
+    const tr = merge(findByUuid(s.index, uuid), payload);
     tr.specialStatus = undefined;
     sanityCheck(tr);
     return s;
   })
   .add<EditResourceParams>(Actions.EDIT_RESOURCE, (s, { payload }) => {
-    let uuid = payload.uuid;
-    let { update } = payload;
-    let source = merge<TaggedResource>(findByUuid(s.index, uuid),
+    const uuid = payload.uuid;
+    const { update } = payload;
+    const source: TaggedResource = merge(findByUuid(s.index, uuid),
       { body: update },
       { specialStatus: SpecialStatus.DIRTY });
     sanityCheck(source);
@@ -181,8 +183,8 @@ export let resourceReducer = generateReducer
     return s;
   })
   .add<EditResourceParams>(Actions.OVERWRITE_RESOURCE, (s, { payload }) => {
-    let uuid = payload.uuid;
-    let original = findByUuid(s.index, uuid);
+    const uuid = payload.uuid;
+    const original = findByUuid(s.index, uuid);
     original.body = payload.update as typeof original.body;
     original.specialStatus = SpecialStatus.DIRTY;
     sanityCheck(original);
@@ -191,8 +193,8 @@ export let resourceReducer = generateReducer
     return s;
   })
   .add<TaggedResource>(Actions.INIT_RESOURCE, (s, { payload }) => {
-    let tr = payload;
-    let uuid = tr.uuid;
+    const tr = payload;
+    const uuid = tr.uuid;
     reindexResource(s.index, tr);
     if (tr.kind === "logs") {
       // Since logs don't come from the API all the time, they are the only
@@ -206,23 +208,23 @@ export let resourceReducer = generateReducer
     return s;
   })
   .add<TaggedResource>(Actions.SAVE_RESOURCE_START, (s, { payload }) => {
-    let resource = findByUuid(s.index, payload.uuid);
+    const resource = findByUuid(s.index, payload.uuid);
     resource.specialStatus = SpecialStatus.SAVING;
     if (!resource.body.id) { delete resource.body.id; }
     return s;
   })
   .add<ResourceReadyPayl>(Actions.RESOURCE_READY, (s, { payload }) => {
-    let { name } = payload;
+    const { name } = payload;
     /** Problem:  Most API resources are plural (array wrapped) resource.
      *            A small subset are singular (`device` and a few others),
      *            making `.map()` and friends unsafe.
      *  Solution: wrap everything in an array on the way in. */
-    let unwrapped = payload.data;
-    let data = arrayWrap(unwrapped);
-    let { index } = s;
+    const unwrapped = payload.data;
+    const data = arrayWrap(unwrapped);
+    const { index } = s;
     s.loaded.push(name);
     index.byKind[name].map(x => {
-      let resource = index.references[x];
+      const resource = index.references[x];
       if (resource) {
         removeFromIndex(index, resource);
         dontTouchThis(resource);
@@ -230,7 +232,31 @@ export let resourceReducer = generateReducer
     });
     addAllToIndex(index, name, data);
     return s;
+  })
+  .add<string>(Actions.REFRESH_RESOURCE_START, (s, a) => {
+    mutateSpecialStatus(a.payload, s.index, SpecialStatus.SAVING);
+    return s;
+  })
+  .add<TaggedResource>(Actions.REFRESH_RESOURCE_OK, (s, a) => {
+    s.index.references[a.payload.uuid] = a.payload;
+    mutateSpecialStatus(a.payload.uuid, s.index, undefined);
+    return s;
+  })
+  .add<GeneralizedError>(Actions.REFRESH_RESOURCE_NO, (s, a) => {
+    mutateSpecialStatus(a.payload.uuid, s.index, undefined);
+    return s;
   });
+
+/** Helper method to change the `specialStatus` of a resource in the index */
+const mutateSpecialStatus =
+  (uuid: string, index: ResourceIndex, status: SpecialStatus | undefined) => {
+    const resource = index.references[uuid];
+    if (resource) {
+      resource.specialStatus = status;
+    } else {
+      throw new Error("Refreshed a non-existent resource");
+    }
+  };
 
 interface HasID {
   id?: number | undefined;
@@ -248,7 +274,7 @@ function addToIndex<T>(index: ResourceIndex,
   kind: ResourceName,
   body: T,
   uuid: string) {
-  let tr: TaggedResource =
+  const tr: TaggedResource =
     { kind, body, uuid, status: undefined } as any;
   sanityCheck(tr);
   index.all.push(tr.uuid);
@@ -262,10 +288,10 @@ export function joinKindAndId(kind: ResourceName, id: number | undefined) {
   return `${kind}.${id || 0}`;
 }
 
-let filterOutUuid = (tr: TaggedResource) => (uuid: string) => uuid !== tr.uuid;
+const filterOutUuid = (tr: TaggedResource) => (uuid: string) => uuid !== tr.uuid;
 function removeFromIndex(index: ResourceIndex, tr: TaggedResource) {
-  let { kind } = tr;
-  let id = tr.body.id;
+  const { kind } = tr;
+  const id = tr.body.id;
   index.all = index.all.filter(filterOutUuid(tr));
   index.byKind[tr.kind] = index.byKind[tr.kind].filter(filterOutUuid(tr));
   delete index.byKindAndId[joinKindAndId(kind, id)];
@@ -274,12 +300,12 @@ function removeFromIndex(index: ResourceIndex, tr: TaggedResource) {
 }
 
 function whoops(origin: string, kind: string) {
-  let msg = `${origin}/${kind}: No handler written for this one yet.`;
+  const msg = `${origin}/${kind}: No handler written for this one yet.`;
   throw new Error(msg);
 }
 
 export function findByUuid(index: ResourceIndex, uuid: string): TaggedResource {
-  let x = index.references[uuid];
+  const x = index.references[uuid];
   if (x && isTaggedResource(x)) {
     return x;
   } else {
